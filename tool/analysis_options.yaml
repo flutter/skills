@@ -1,0 +1,138 @@
+# This file configures the static analysis results for your project (errors,
+# warnings, and lints).
+#
+# This enables the 'recommended' set of lints from `package:lints`.
+# This set helps identify many issues that may lead to problems when running
+# or consuming Dart code, and enforces writing Dart using a single, idiomatic
+# style and format.
+#
+# If you want a smaller set of lints you can change this to specify
+# 'package:lints/core.yaml'. These are just the most critical lints
+# (the recommended set includes the core lints).
+# The core lints are also what is used by pub.dev for scoring packages.
+
+include: package:lints/recommended.yaml
+
+# Uncomment the following section to specify additional rules.
+
+# analyzer:
+#   exclude:
+#     - path/to/excluded/files/**
+
+# For more information about the core and recommended set of lints, see
+# https://dart.dev/go/core-lints
+
+linter:
+  # The lint rules applied to this project can be customized in the
+  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
+  # included above or to enable additional rules. A list of all available lints
+  # and their documentation is published at https://dart.dev/lints.
+  #
+  # Instead of disabling a lint rule for the entire project in the
+  # section below, it can also be suppressed for a single line of code
+  # or a specific dart file by using the `// ignore: name_of_lint` and
+  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
+  # producing the lint.
+  rules:
+    # Error Prevention
+    avoid_catches_without_on_clauses: true
+    avoid_catching_errors: true
+    avoid_returning_this: true
+    avoid_void_async: true
+    await_only_futures: true
+    cancel_subscriptions: true
+    close_sinks: true
+    discarded_futures: true
+    literal_only_boolean_expressions: true
+    no_adjacent_strings_in_list: true
+    no_logic_in_create_state: true
+    only_throw_errors: true
+    prefer_is_empty: true
+    prefer_is_not_empty: true
+    test_types_in_equals: true
+    throw_in_finally: true
+    unawaited_futures: true
+    unnecessary_null_aware_assignments: true
+    unnecessary_null_in_if_null_operators: true
+    unnecessary_nullable_for_final_variable_declarations: true
+    use_build_context_synchronously: true
+    use_rethrow_when_possible: true
+
+    # Style & Formatting
+    always_declare_return_types: true
+    always_put_required_named_parameters_first: true
+    avoid_escaping_inner_quotes: true
+    avoid_function_literals_in_foreach_calls: true
+    avoid_init_to_null: true
+    avoid_multiple_declarations_per_line: true
+    avoid_positional_boolean_parameters: true
+    avoid_private_typedef_functions: true
+    avoid_redundant_argument_values: true
+    avoid_renaming_method_parameters: true
+    avoid_shadowing_type_parameters: true
+    avoid_types_on_closure_parameters: true
+    avoid_unused_constructor_parameters: true
+    camel_case_extensions: true
+    cascade_invocations: true
+    curly_braces_in_flow_control_structures: true
+    directives_ordering: true
+    eol_at_end_of_file: true
+    file_names: true
+    library_names: true
+    no_leading_underscores_for_library_prefixes: true
+    no_leading_underscores_for_local_identifiers: true
+    omit_local_variable_types: true
+    prefer_const_constructors: true
+    prefer_const_constructors_in_immutables: true
+    prefer_const_declarations: true
+    prefer_const_literals_to_create_immutables: true
+    prefer_final_fields: true
+    prefer_final_in_for_each: true
+    prefer_final_locals: true
+    prefer_if_elements_to_conditional_expressions: true
+    prefer_interpolation_to_compose_strings: true
+    prefer_mixin: true
+    prefer_relative_imports: true
+    prefer_single_quotes: true
+    require_trailing_commas: true
+    sized_box_for_whitespace: true
+    sort_child_properties_last: true
+    sort_constructors_first: true
+    sort_unnamed_constructors_first: true
+    type_init_formals: true
+    unnecessary_await_in_return: true
+    unnecessary_breaks: true
+    unnecessary_const: true
+    unnecessary_constructor_name: true
+    unnecessary_lambdas: true
+    unnecessary_late: true
+    unnecessary_new: true
+    unnecessary_parenthesis: true
+    unnecessary_raw_strings: true
+    unnecessary_string_escapes: true
+    unnecessary_string_interpolations: true
+    unnecessary_this: true
+    use_function_type_syntax_for_parameters: true
+    use_string_buffers: true
+    use_to_and_as_if_applicable: true
+
+    # Best Practices
+    annotate_redeclares: true
+    avoid_annotating_with_dynamic: true
+    avoid_bool_literals_in_conditional_expressions: true
+    avoid_classes_with_only_static_members: true
+    avoid_print: true
+    avoid_setters_without_getters: true
+    depend_on_referenced_packages: true
+    deprecated_consistency: true
+    library_private_types_in_public_api: true
+    prefer_asserts_in_initializer_lists: true
+    prefer_constructors_over_static_methods: true
+
+    # Documentation
+    dangling_library_doc_comments: true
+    library_annotations: true
+    public_member_api_docs: true
+
+# Additional information about this file can be found at
+# https://dart.dev/guides/language/analysis-options

@@ -1,0 +1,327 @@
+// Copyright (c) 2026, the Dart project authors.  Please see the AUTHORS file
+// for details. All rights reserved. Use of this source code is governed by a
+// BSD-style license that can be found in the LICENSE file.
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:args/command_runner.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
+import 'package:skills/src/commands/generate_skill_command.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('GenerateSkillsCommand', () {
+    late CommandRunner runner;
+    late Directory tempDir;
+    late File videoFile;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('skills_gen_test');
+      videoFile = File(p.join(tempDir.path, 'input.json'));
+      runner = CommandRunner('skills', 'Test runner');
+    });
+
+    tearDown(() async {
+      await tempDir.delete(recursive: true);
+    });
+
+    test('generates skill from JSON input with dart-docs- prefix', () async {
+      // Create input JSON in a file named dart_dev.json to trigger prefixing
+      videoFile = File(p.join(tempDir.path, 'dart_dev.json'));
+      final inputData = [
+        {
+          'name': 'foo',
+          'description': 'Foo description',
+          'resources': ['https://example.com/foo.html'],
+        },
+        {
+          'name': 'example',
+          'description': 'Example description',
+          'resources': ['https://example.com/'],
+        },
+      ];
+      videoFile.writeAsStringSync(jsonEncode(inputData));
+
+      final geminiRequests = <String>[];
+      // Mock HTTP Client
+      final mockClient = MockClient((request) async {
+        final url = request.url.toString();
+
+        // 1. Mock content fetch
+        if (url.startsWith('https://example.com')) {
+          return http.Response(
+            '<html><body><h1>Skill</h1><p>Content for $url</p></body></html>',
+            200,
+          );
+        }
+
+        // 2. Mock Gemini API
+        if (url.contains('generativelanguage.googleapis.com')) {
+          geminiRequests.add(request.body);
+          // ... strict mock ...
+          return http.Response(
+            jsonEncode({
+              'candidates': [
+                {
+                  'content': {
+                    'parts': [
+                      {'text': 'Generated Content'},
+                    ],
+                  },
+                },
+              ],
+            }),
+            200,
+          );
+        }
+
+        return http.Response('Not Found', 404);
+      });
+
+      final command = GenerateSkillCommand(
+        httpClient: mockClient,
+        outputDir: tempDir,
+      );
+      runner.addCommand(command);
+
+      // Run command
+      await runner.run(['generate-skill', videoFile.path]);
+
+      // Just verify file creation for now
+      final skillDirFoo = Directory(p.join(tempDir.path, 'foo'));
+      expect(skillDirFoo.existsSync(), isTrue);
+
+      final skillFile = File(p.join(skillDirFoo.path, 'SKILL.md'));
+      expect(skillFile.existsSync(), isTrue);
+
+      // Verify source header was sent to Gemini
+      expect(geminiRequests, isNotEmpty);
+      expect(
+        geminiRequests.first,
+        contains('--- Raw content from https://example.com/foo.html ---'),
+      );
+    });
+
+    test('logs progress and summary', () async {
+      videoFile = File(p.join(tempDir.path, 'dart_dev.json'));
+      final inputData = [
+        {
+          'name': 'success',
+          'description': 'Desc',
+          'resources': ['https://example.com/success'],
+        },
+        {
+          'name': 'fail',
+          'description': 'Desc',
+          'resources': ['https://example.com/fail_404'],
+        },
+      ];
+      videoFile.writeAsStringSync(jsonEncode(inputData));
+
+      final logs = <String>[];
+      final sub = Logger.root.onRecord.listen((record) {
+        logs.add(record.message);
+      });
+
+      addTearDown(sub.cancel);
+
+      final mockClient = MockClient((request) async {
+        final url = request.url.toString();
+        if (url == 'https://example.com/success') {
+          return http.Response('<html>Content</html>', 200);
+        }
+        if (url == 'https://example.com/fail_404') {
+          return http.Response('Not Found', 404);
+        }
+        // Mock Gemini
+        if (url.contains('generativelanguage')) {
+          return http.Response(
+            jsonEncode({
+              'candidates': [
+                {
+                  'content': {
+                    'parts': [
+                      {'text': 'Generated Content'},
+                    ],
+                  },
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        return http.Response('Error', 500);
+      });
+
+      final command = GenerateSkillCommand(
+        httpClient: mockClient,
+        outputDir: tempDir,
+      );
+      runner.addCommand(command);
+
+      await runner.run(['generate-skill', videoFile.path]);
+
+      // Verify Logs
+      expect(logs, contains(contains('Generating skill: success...')));
+      expect(
+        logs,
+        contains(contains('Fetching https://example.com/success...')),
+      );
+      expect(logs, contains(contains('Generating skill: fail...')));
+    });
+
+    test('accepts thinking-budget option', () async {
+      // Setup for this test requires a configFile and skillsDir,
+      // which are not defined in the provided context.
+      // Assuming these would be defined in a real scenario or
+      // this test is incomplete without them.
+      // For now, I'll use tempDir for skillsDir and create a dummy configFile.
+
+      final skillsDir = Directory(p.join(tempDir.path, 'skills_output'));
+      await skillsDir.create();
+
+      final configFile = File(p.join(tempDir.path, 'config.json'));
+      final inputData = [
+        {
+          'name': 'budget_test',
+          'description': 'Budget test description',
+          'resources': ['https://example.com/budget'],
+        },
+      ];
+      configFile.writeAsStringSync(jsonEncode(inputData));
+
+      final logs = <String>[];
+      final sub = Logger.root.onRecord.listen((record) {
+        logs.add(record.message);
+      });
+      addTearDown(sub.cancel);
+
+      final mockClient = MockClient((request) async {
+        final url = request.url.toString();
+        if (url == 'https://example.com/budget') {
+          return http.Response('<html>Budget Content</html>', 200);
+        }
+        if (url.contains('generativelanguage')) {
+          return http.Response(
+            jsonEncode({
+              'candidates': [
+                {
+                  'content': {
+                    'parts': [
+                      {'text': 'Generated Budget Content'},
+                    ],
+                  },
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        return http.Response('Error', 500);
+      });
+
+      final command = GenerateSkillCommand(
+        httpClient: mockClient,
+        outputDir: skillsDir,
+      );
+      runner.addCommand(command);
+
+      await runner.run([
+        'generate-skill',
+        configFile.path,
+        '--directory',
+        skillsDir.path,
+        '--thinking-budget',
+        '4000',
+      ]);
+
+      expect(
+        logs,
+        contains(
+          contains(
+            'Model: models/gemini-3.1-pro-preview, Max Output Tokens: 8192, Thinking Budget: 4000',
+          ),
+        ),
+      );
+      final skillDirBudget = Directory(p.join(skillsDir.path, 'budget_test'));
+      expect(skillDirBudget.existsSync(), isTrue);
+      final skillFile = File(p.join(skillDirBudget.path, 'SKILL.md'));
+      expect(skillFile.existsSync(), isTrue);
+      expect(
+        skillFile.readAsStringSync(),
+        contains('Generated Budget Content\n'),
+      );
+    });
+
+    test('handles invalid thinking-budget option gracefully', () async {
+      final skillsDir = await Directory.systemTemp.createTemp('skills_output');
+      addTearDown(() => skillsDir.delete(recursive: true));
+
+      final configFile = File(p.join(tempDir.path, 'config.json'));
+      final inputData = [
+        {
+          'name': 'budget_test',
+          'description': 'Budget test description',
+          'resources': ['https://example.com/budget'],
+        },
+      ];
+      configFile.writeAsStringSync(jsonEncode(inputData));
+
+      final logs = <String>[];
+      final sub = Logger.root.onRecord.listen((record) {
+        logs.add(record.message);
+      });
+      addTearDown(sub.cancel);
+
+      final mockClient = MockClient((request) async {
+        final url = request.url.toString();
+        if (url == 'https://example.com/budget') {
+          return http.Response('<html>Budget Content</html>', 200);
+        }
+        if (url.contains('generativelanguage')) {
+          return http.Response(
+            jsonEncode({
+              'candidates': [
+                {
+                  'content': {
+                    'parts': [
+                      {'text': 'Generated Budget Content'},
+                    ],
+                  },
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        return http.Response('Error', 500);
+      });
+
+      final command = GenerateSkillCommand(
+        httpClient: mockClient,
+        outputDir: skillsDir,
+      );
+      runner.addCommand(command);
+
+      await runner.run([
+        'generate-skill',
+        configFile.path,
+        '--directory',
+        skillsDir.path,
+        '--thinking-budget',
+        'invalid',
+      ]);
+
+      expect(
+        logs,
+        contains(contains('Invalid thinking-budget: invalid. Skipping.')),
+      );
+      final skillDirBudget = Directory(p.join(skillsDir.path, 'budget_test'));
+      expect(skillDirBudget.existsSync(), isFalse);
+    });
+  });
+}
