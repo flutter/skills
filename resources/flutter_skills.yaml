@@ -279,3 +279,74 @@
     - https://docs.flutter.dev/ui/layout/constraints
     - https://docs.flutter.dev/ui/widgets/layout
     - https://docs.flutter.dev/learn/pathway/tutorial/layout
+- name: flutter-theming
+  description: How to customize your app's theme using Flutter's theming system
+  instructions: |
+    Theming involves sharing colors and font styles throughout an app. You can
+    define app-wide themes and extend a theme to change a theme style for one
+    component. Each theme defines colors, type style, and other parameters
+    applicable for the type of Material component. Flutter applies styling in a
+    specific order: styles applied to the specific widget, themes that override
+    the immediate parent theme, and finally, the main theme for the entire app.
+    As of Flutter 3.16, Material 3 is Flutter's default theme.
+
+    Component theme normalization is a process where themes like `CardTheme`,
+    `DialogTheme`, and `TabBarTheme` have been refactored to conform to
+    Flutter's conventions for component themes in the Material library. This
+    normalization aims for a more consistent theming experience.
+    `CardThemeData`, `DialogThemeData`, and `TabBarThemeData` were added to
+    define overrides for the defaults of the component visual properties. In
+    `ThemeData`, the type of the `cardTheme` property has changed from
+    `CardTheme` to `CardThemeData`. During card theme normalization, the type of
+    `ThemeData.cardTheme` was changed to `Object?` to accept both `CardTheme`
+    and `CardThemeData` for a smooth transition.
+
+    New button widgets and themes have been introduced to align with the
+    Material Design spec and to make buttons more flexible and easier to
+    configure. The original `FlatButton`, `RaisedButton`, and `OutlineButton`
+    widgets have been replaced by `TextButton`, `ElevatedButton`, and
+    `OutlinedButton` respectively. Each new button class has its own theme:
+    `TextButtonTheme`, `ElevatedButtonTheme`, and `OutlinedButtonTheme`. The
+    original `ButtonTheme` class is no longer used. The appearance of these new
+    buttons is specified by a `ButtonStyle` object, which is a collection of
+    visual properties, many of which can depend on the button's state through
+    `MaterialStateProperty`. These new themes follow a "normalized" pattern
+    where theme properties and widget constructor parameters are null by
+    default, and non-null values override the component's default. The defaults
+    are based primarily on the overall `Theme`'s `colorScheme` and `textTheme`.
+
+    When considering theming for adaptive apps, it's important to consider
+    platform standards, idioms, and norms, as these inform user expectations.
+    Reflecting these standards can reduce cognitive load and build user trust.
+    It's beneficial to envision the ideal user experience for each platform and
+    consider how a user of that platform would expect to achieve a goal.
+    Assigning a platform advocate for each platform can provide constant,
+    informed feedback to ensure the app feels great on each platform. While
+    conforming to expected behaviors, an app doesn't need to use default
+    components or styling; many popular multiplatform apps have distinct UIs.
+    Consolidating styling and behavior across platforms can simplify development
+    and testing.
+  resources:
+    - https://docs.flutter.dev/cookbook/design/themes
+    - https://docs.flutter.dev/release/breaking-changes/component-theme-normalization
+    - https://docs.flutter.dev/release/breaking-changes/buttons
+    - https://docs.flutter.dev/release/breaking-changes/component-theme-normalization-updates
+    - https://docs.flutter.dev/release/breaking-changes/theme-data-accent-properties
+    - https://docs.flutter.dev/release/breaking-changes/material-theme-system-updates
+    - https://docs.flutter.dev/ui/design
+    - https://docs.flutter.dev/release/breaking-changes/appbar-theme-color
+    - https://docs.flutter.dev/ui/widgets/styling
+    - https://docs.flutter.dev/release/breaking-changes/material-3-migration
+    - https://docs.flutter.dev/cookbook/design/themes
+    - https://docs.flutter.dev/release/breaking-changes/component-theme-normalization
+    - https://docs.flutter.dev/release/breaking-changes/buttons
+    - https://docs.flutter.dev/release/breaking-changes/theme-data-accent-properties
+    - https://docs.flutter.dev/ui/design
+    - https://docs.flutter.dev/release/breaking-changes/component-theme-normalization-updates
+    - https://docs.flutter.dev/release/breaking-changes/material-theme-system-updates
+    - https://docs.flutter.dev/release/breaking-changes/material-3-migration
+    - https://docs.flutter.dev/release/breaking-changes/material-3-default
+    - https://docs.flutter.dev/release/breaking-changes/appbar-theme-color
+    - https://docs.flutter.dev/cookbook/design/themes
+    - https://docs.flutter.dev/ui/adaptive-responsive/idioms
+    - https://docs.flutter.dev/ui
