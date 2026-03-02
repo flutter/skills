@@ -20,6 +20,7 @@ abstract class BaseSkillCommand extends Command {
     required this.httpClient,
     required this.logger,
     this.outputDir,
+    this.environment,
   }) {
     argParser
       ..addOption('skill', help: 'Process only the specified skill by name.')
@@ -41,6 +42,9 @@ abstract class BaseSkillCommand extends Command {
 
   /// The directory to output or find generated skills.
   final Directory? outputDir;
+
+  /// Optional override for the environment variables, for testing.
+  final Map<String, String>? environment;
 
   /// The logger for this command.
   final Logger logger;
@@ -77,7 +81,7 @@ abstract class BaseSkillCommand extends Command {
       return;
     }
 
-    final apiKey = Platform.environment['GEMINI_API_KEY'];
+    final apiKey = (environment ?? Platform.environment)['GEMINI_API_KEY'];
     if (apiKey == null) {
       logger.severe('GEMINI_API_KEY environment variable not set.');
       return;
@@ -100,7 +104,13 @@ abstract class BaseSkillCommand extends Command {
     }
 
     for (final skill in targetSkills) {
-      await runSkill(skill, gemini, outDir, thinkingBudget);
+      await runSkill(
+        skill,
+        gemini,
+        outDir,
+        thinkingBudget,
+        configDir: file.parent,
+      );
     }
   }
 
@@ -109,6 +119,7 @@ abstract class BaseSkillCommand extends Command {
     SkillParams skill,
     GeminiService gemini,
     Directory outputDir,
-    int thinkingBudget,
-  );
+    int thinkingBudget, {
+    Directory? configDir,
+  });
 }

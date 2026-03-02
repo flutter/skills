@@ -3,9 +3,12 @@
 // BSD-style license that can be found in the LICENSE file.
 
 import 'dart:convert';
+import 'dart:io' as io;
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:skills/src/services/gemini_service.dart';
 import 'package:test/test.dart';
@@ -247,7 +250,7 @@ Some content
         'markdown',
         'name',
         'desc',
-        urls: ['urls'],
+        resources: ['urls'],
       );
 
       expect(attempt, 2);
@@ -290,7 +293,7 @@ Some content
         'markdown',
         'name',
         'desc',
-        urls: ['urls'],
+        resources: ['urls'],
       );
 
       expect(result, isNull);
@@ -364,5 +367,95 @@ Some content
         throwsA(isA<http.ClientException>()),
       );
     });
+
+    test('throws Exception for insecure http:// URL', () async {
+      final client = MockClient((request) async {
+        return http.Response('content', 200);
+      });
+
+      expect(
+        () =>
+            fetchAndConvertContent(['http://example.com/doc1'], client, logger),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Insecure HTTP URL found'),
+          ),
+        ),
+      );
+    });
+
+    test('fetches local file correctly relative to configDir', () async {
+      final tempDir = io.Directory.systemTemp.createTempSync('gemini_test');
+      try {
+        io.File(
+          p.join(tempDir.path, 'local_doc.md'),
+        ).writeAsStringSync('# Local Doc\ncontent');
+
+        final client = MockClient((request) async {
+          return http.Response('Not found', 404);
+        });
+
+        final result = await fetchAndConvertContent(
+          ['local_doc.md'],
+          client,
+          logger,
+          configDir: tempDir,
+        );
+
+        expect(result, contains('Local Doc'));
+        expect(result, contains('content'));
+      } finally {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
+
+    test('throws Exception for missing local file', () async {
+      final tempDir = io.Directory.systemTemp.createTempSync('gemini_test');
+      try {
+        final client = MockClient((request) async {
+          return http.Response('Not found', 404);
+        });
+
+        expect(
+          () => fetchAndConvertContent(
+            ['missing.md'],
+            client,
+            logger,
+            configDir: tempDir,
+          ),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('Local resource file not found'),
+            ),
+          ),
+        );
+      } finally {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
+
+    test(
+      'throws Exception for local file when no configDir is provided',
+      () async {
+        final client = MockClient((request) async {
+          return http.Response('Not found', 404);
+        });
+
+        expect(
+          () => fetchAndConvertContent(['local_doc.md'], client, logger),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('no configuration directory was provided to resolve it'),
+            ),
+          ),
+        );
+      },
+    );
   });
 }

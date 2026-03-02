@@ -2,7 +2,7 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-/// Parameters for generating a skill from a URL.
+/// Parameters for generating a skill from resources.
 class SkillParams {
   /// Creates a new [SkillParams] instance.
   SkillParams({
@@ -31,6 +31,6 @@ class SkillParams {
   /// Optional instructions for generating the skill.
   final String? instructions;
 
-  /// The resources/URLs to fetch content from.
+  /// The resources to fetch content from.
   final List<String> resources;
 }

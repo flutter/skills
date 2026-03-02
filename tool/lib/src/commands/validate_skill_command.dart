@@ -35,8 +35,9 @@ class ValidateSkillCommand extends BaseSkillCommand {
     SkillParams skill,
     GeminiService gemini,
     Directory outputDir,
-    int thinkingBudget,
-  ) async {
+    int thinkingBudget, {
+    Directory? configDir,
+  }) async {
     logger.info('Validating skill: ${skill.name}...');
 
     try {
@@ -45,6 +46,7 @@ class ValidateSkillCommand extends BaseSkillCommand {
         skill.resources,
         httpClient,
         logger,
+        configDir: configDir,
       );
 
       if (markdown.isEmpty) {

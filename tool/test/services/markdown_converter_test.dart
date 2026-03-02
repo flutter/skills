@@ -103,5 +103,54 @@ void main() {
     test('handles empty body', () {
       expect(converter.convert(''), isEmpty);
     });
+
+    test('converts table without thead or tbody', () {
+      const html = '''
+        <table>
+          <tr><td>Data 1</td><td>Data 2</td></tr>
+          <tr><td>Data 3</td><td>Data 4</td></tr>
+        </table>
+      ''';
+      expect(converter.convert(html), contains('| Data 1 | Data 2 |'));
+      expect(converter.convert(html), contains('| Data 3 | Data 4 |'));
+    });
+
+    test('converts video tag with nested source', () {
+      expect(
+        converter.convert(
+          '<video><source src="https://example.com/video.mp4"></video>',
+        ),
+        contains('[Video](https://example.com/video.mp4)'),
+      );
+    });
+
+    test('converts definition lists (dl, dt, dd)', () {
+      const html = '''
+        <dl>
+          <dt>Term 1</dt>
+          <dd>Definition 1</dd>
+        </dl>
+      ''';
+      final md = converter.convert(html);
+      expect(md, contains('**Term 1**'));
+      expect(md, contains('Definition 1'));
+    });
+
+    test('converts iframes', () {
+      expect(
+        converter.convert('<iframe src="https://example.com/embed"></iframe>'),
+        contains('[Iframe](https://example.com/embed)'),
+      );
+    });
+    test('retains details and summary as HTML', () {
+      const html = '''
+        <details>
+          <summary>Click to expand</summary>
+          Hidden content
+        </details>
+      ''';
+      final md = converter.convert(html);
+      expect(md, contains('<details>'));
+    });
   });
 }

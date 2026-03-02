@@ -14,7 +14,7 @@ This tool requires the `GEMINI_API_KEY` environment variable to be set.
 
 ### `generate-skill`
 
-Generates `SKILL.md` files from a JSON configuration file. Use the `--skill` option to generate a specific skill.
+Generates `SKILL.md` files from a YAML configuration file. Use the `--skill` option to generate a specific skill.
 
 **Usage:**
 ```bash
@@ -22,7 +22,7 @@ dart run skills generate-skill [options] [config_file]
 ```
 
 **Arguments:**
-*   `[config_file]`: Path to the JSON configuration file. Defaults to `resources/flutter_skills.yaml`.
+*   `[config_file]`: Path to the YAML configuration file. Defaults to `resources/flutter_skills.yaml`.
 
 **Options:**
 *   `--skill`: Filter to generate only the specified skill by name.
@@ -38,7 +38,7 @@ dart run skills validate-skill [options] [config_file]
 ```
 
 **Arguments:**
-*   `[config_file]`: Path to the JSON configuration file. Defaults to `resources/flutter_skills.json`.
+*   `[config_file]`: Path to the YAML configuration file. Defaults to `resources/flutter_skills.yaml`.
 
 **Options:**
 *   `--skill`: Validate only the specified skill by name.
@@ -92,4 +92,5 @@ The default configuration file is located at `tool/resources/flutter_skills.yaml
   resources:
     - https://docs.flutter.dev/ui/widgets/layout
     - https://docs.flutter.dev/ui/layout
+    - ../packages/flutter/lib/src/widgets/layout.md
 ```

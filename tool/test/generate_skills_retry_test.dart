@@ -21,7 +21,7 @@ void main() {
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('skills_retry_test');
-      inputFile = File(p.join(tempDir.path, 'input.json'));
+      inputFile = File(p.join(tempDir.path, 'input.yaml'));
       runner = CommandRunner('skills', 'Test runner');
     });
 

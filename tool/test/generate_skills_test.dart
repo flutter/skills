@@ -21,7 +21,7 @@ void main() {
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('skills_gen_test');
-      videoFile = File(p.join(tempDir.path, 'input.json'));
+      videoFile = File(p.join(tempDir.path, 'input.yaml'));
       runner = CommandRunner('skills', 'Test runner');
     });
 
@@ -29,9 +29,9 @@ void main() {
       await tempDir.delete(recursive: true);
     });
 
-    test('generates skill from JSON input with dart-docs- prefix', () async {
-      // Create input JSON in a file named dart_dev.json to trigger prefixing
-      videoFile = File(p.join(tempDir.path, 'dart_dev.json'));
+    test('generates skill from YAML input with dart-docs- prefix', () async {
+      // Create input YAML in a file named dart_dev.yaml to trigger prefixing
+      videoFile = File(p.join(tempDir.path, 'dart_dev.yaml'));
       final inputData = [
         {
           'name': 'foo',
@@ -107,7 +107,7 @@ void main() {
     });
 
     test('logs progress and summary', () async {
-      videoFile = File(p.join(tempDir.path, 'dart_dev.json'));
+      videoFile = File(p.join(tempDir.path, 'dart_dev.yaml'));
       final inputData = [
         {
           'name': 'success',
@@ -184,7 +184,7 @@ void main() {
       final skillsDir = Directory(p.join(tempDir.path, 'skills_output'));
       await skillsDir.create();
 
-      final configFile = File(p.join(tempDir.path, 'config.json'));
+      final configFile = File(p.join(tempDir.path, 'config.yaml'));
       final inputData = [
         {
           'name': 'budget_test',
@@ -261,7 +261,7 @@ void main() {
       final skillsDir = await Directory.systemTemp.createTemp('skills_output');
       addTearDown(() => skillsDir.delete(recursive: true));
 
-      final configFile = File(p.join(tempDir.path, 'config.json'));
+      final configFile = File(p.join(tempDir.path, 'config.yaml'));
       final inputData = [
         {
           'name': 'budget_test',
@@ -322,6 +322,130 @@ void main() {
       );
       final skillDirBudget = Directory(p.join(skillsDir.path, 'budget_test'));
       expect(skillDirBudget.existsSync(), isFalse);
+    });
+    test(
+      'logs warning when fetchAndConvertContent returns empty string',
+      () async {
+        final inputData = [
+          {
+            'name': 'empty-fetch',
+            'description': 'Description',
+            'resources': <String>[],
+          },
+        ];
+        final videoFile = File(p.join(tempDir.path, 'empty_fetch.yaml'))
+          ..writeAsStringSync(jsonEncode(inputData));
+
+        final logs = <String>[];
+        final sub = Logger.root.onRecord.listen(
+          (record) => logs.add(record.message),
+        );
+        addTearDown(sub.cancel);
+
+        final mockClient = MockClient((request) async {
+          return http.Response('', 200); // Empty HTML body
+        });
+
+        final command = GenerateSkillCommand(
+          httpClient: mockClient,
+          outputDir: tempDir,
+        );
+        runner.addCommand(command);
+
+        await runner.run(['generate-skill', videoFile.path]);
+        expect(
+          logs,
+          contains('  No content fetched for empty-fetch. Skipping.'),
+        );
+      },
+    );
+
+    test('logs severe error when Gemini returns null or empty', () async {
+      final inputData = [
+        {
+          'name': 'empty-gemini',
+          'description': 'Description',
+          'resources': ['https://example.com/source'],
+        },
+      ];
+      final videoFile = File(p.join(tempDir.path, 'empty_gemini.yaml'))
+        ..writeAsStringSync(jsonEncode(inputData));
+
+      final logs = <String>[];
+      final sub = Logger.root.onRecord.listen(
+        (record) => logs.add(record.message),
+      );
+      addTearDown(sub.cancel);
+
+      final mockClient = MockClient((request) async {
+        if (request.url.toString() == 'https://example.com/source') {
+          return http.Response('<html>Content</html>', 200);
+        }
+        if (request.url.toString().contains('generativelanguage')) {
+          return http.Response(
+            jsonEncode({
+              'candidates': [
+                {
+                  'content': {
+                    'parts': [
+                      {'text': ''},
+                    ],
+                  },
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        return http.Response('Error', 500);
+      });
+
+      final command = GenerateSkillCommand(
+        httpClient: mockClient,
+        outputDir: tempDir,
+      );
+      runner.addCommand(command);
+
+      await runner.run(['generate-skill', videoFile.path]);
+      expect(logs, contains('  Failed to generate content for empty-gemini'));
+    });
+
+    test('logs severe error on generic exception during generation', () async {
+      final inputData = [
+        {
+          'name': 'exception-gemini',
+          'description': 'Description',
+          'resources': ['https://example.com/source'],
+        },
+      ];
+      final videoFile = File(p.join(tempDir.path, 'exception_gemini.yaml'))
+        ..writeAsStringSync(jsonEncode(inputData));
+
+      final logs = <String>[];
+      final sub = Logger.root.onRecord.listen(
+        (record) => logs.add(record.message),
+      );
+      addTearDown(sub.cancel);
+
+      final mockClient = MockClient((request) async {
+        throw Exception('Generic Error');
+      });
+
+      final command = GenerateSkillCommand(
+        httpClient: mockClient,
+        outputDir: tempDir,
+      );
+      runner.addCommand(command);
+
+      await runner.run(['generate-skill', videoFile.path]);
+      expect(
+        logs,
+        contains(
+          contains(
+            'Error processing exception-gemini: Exception: Generic Error',
+          ),
+        ),
+      );
     });
   });
 }

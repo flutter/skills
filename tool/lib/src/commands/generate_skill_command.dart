@@ -28,8 +28,9 @@ class GenerateSkillCommand extends BaseSkillCommand {
     SkillParams skill,
     GeminiService gemini,
     Directory outputDir,
-    int thinkingBudget,
-  ) async {
+    int thinkingBudget, {
+    Directory? configDir,
+  }) async {
     logger.info('Generating skill: ${skill.name}...');
 
     try {
@@ -37,6 +38,7 @@ class GenerateSkillCommand extends BaseSkillCommand {
         skill.resources,
         httpClient,
         logger,
+        configDir: configDir,
       );
 
       if (combinedMarkdown.isEmpty) {
@@ -49,7 +51,7 @@ class GenerateSkillCommand extends BaseSkillCommand {
         skill.name,
         skill.description,
         instructions: skill.instructions,
-        urls: skill.resources,
+        resources: skill.resources,
         thinkingBudget: thinkingBudget,
       );
 
