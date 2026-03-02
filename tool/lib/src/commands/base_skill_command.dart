@@ -20,6 +20,7 @@ abstract class BaseSkillCommand extends Command {
     required this.httpClient,
     required this.logger,
     this.outputDir,
+    this.environmentOverride,
   }) {
     argParser
       ..addOption('skill', help: 'Process only the specified skill by name.')
@@ -44,6 +45,9 @@ abstract class BaseSkillCommand extends Command {
 
   /// The logger for this command.
   final Logger logger;
+  
+  /// Testing override for Platform.environment
+  final Map<String, String>? environmentOverride;
 
   @override
   Future<void> run() async {
@@ -77,7 +81,8 @@ abstract class BaseSkillCommand extends Command {
       return;
     }
 
-    final apiKey = Platform.environment['GEMINI_API_KEY'] ?? 'fake-api-key';
+    final env = environmentOverride ?? Platform.environment;
+    final apiKey = env['GEMINI_API_KEY'];
     if (apiKey == null) {
       logger.severe('GEMINI_API_KEY environment variable not set.');
       return;

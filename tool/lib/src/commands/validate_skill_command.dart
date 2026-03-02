@@ -17,6 +17,7 @@ class ValidateSkillCommand extends BaseSkillCommand {
   ValidateSkillCommand({
     required super.httpClient,
     super.outputDir,
+    super.environmentOverride,
     this.validationDir,
   }) : super(logger: Logger('ValidateSkillCommand'));
 

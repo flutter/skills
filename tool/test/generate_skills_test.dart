@@ -82,7 +82,7 @@ void main() {
         return http.Response('Not Found', 404);
       });
 
-      final command = GenerateSkillCommand(
+      final command = GenerateSkillCommand(environmentOverride: {'GEMINI_API_KEY': 'fake'},
         httpClient: mockClient,
         outputDir: tempDir,
       );
@@ -157,7 +157,7 @@ void main() {
         return http.Response('Error', 500);
       });
 
-      final command = GenerateSkillCommand(
+      final command = GenerateSkillCommand(environmentOverride: {'GEMINI_API_KEY': 'fake'},
         httpClient: mockClient,
         outputDir: tempDir,
       );
@@ -224,7 +224,7 @@ void main() {
         return http.Response('Error', 500);
       });
 
-      final command = GenerateSkillCommand(
+      final command = GenerateSkillCommand(environmentOverride: {'GEMINI_API_KEY': 'fake'},
         httpClient: mockClient,
         outputDir: skillsDir,
       );
@@ -301,7 +301,7 @@ void main() {
         return http.Response('Error', 500);
       });
 
-      final command = GenerateSkillCommand(
+      final command = GenerateSkillCommand(environmentOverride: {'GEMINI_API_KEY': 'fake'},
         httpClient: mockClient,
         outputDir: skillsDir,
       );

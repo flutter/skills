@@ -76,7 +76,7 @@ void main() {
         return http.Response('Not Found', 404);
       });
 
-      final command = GenerateSkillCommand(
+      final command = GenerateSkillCommand(environmentOverride: {'GEMINI_API_KEY': 'fake'},
         httpClient: mockClient,
         outputDir: tempDir,
       );
