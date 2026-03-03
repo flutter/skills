@@ -36,7 +36,7 @@ class _TestSkillCommand extends BaseSkillCommand {
 
 void main() {
   group('BaseSkillCommand Edge Cases', () {
-    late CommandRunner runner;
+    late CommandRunner<void> runner;
     late Directory tempDir;
     late MockClient mockClient;
     final logs = <String>[];
@@ -46,7 +46,7 @@ void main() {
         'base_skill_commands_test',
       );
       mockClient = MockClient((request) async => throw UnimplementedError());
-      runner = CommandRunner('skills', 'Test runner')
+      runner = CommandRunner<void>('skills', 'Test runner')
         ..addCommand(_TestSkillCommand(httpClient: mockClient));
 
       Logger.root.level = Level.INFO;
@@ -71,8 +71,12 @@ void main() {
     test('logs warning when no skills match the --skill filter', () async {
       final configFile = File(p.join(tempDir.path, 'config.yaml'));
       await configFile.writeAsString(
-        jsonEncode([
-          {'name': 'existent-skill', 'description': 'desc', 'resources': []},
+        jsonEncode(<Map<String, dynamic>>[
+          {
+            'name': 'existent-skill',
+            'description': 'desc',
+            'resources': <String>[],
+          },
         ]),
       );
 
@@ -102,8 +106,12 @@ void main() {
     test('logs severe error when GEMINI_API_KEY is not set', () async {
       final configFile = File(p.join(tempDir.path, 'config.yaml'));
       await configFile.writeAsString(
-        jsonEncode([
-          {'name': 'existent-skill', 'description': 'desc', 'resources': []},
+        jsonEncode(<Map<String, dynamic>>[
+          {
+            'name': 'existent-skill',
+            'description': 'desc',
+            'resources': <String>[],
+          },
         ]),
       );
 

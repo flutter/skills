@@ -14,7 +14,7 @@ import '../models/skill_params.dart';
 import '../services/gemini_service.dart';
 
 /// Base command for skill operations.
-abstract class BaseSkillCommand extends Command {
+abstract class BaseSkillCommand extends Command<void> {
   /// Creates a new [BaseSkillCommand].
   BaseSkillCommand({
     required this.httpClient,
@@ -64,7 +64,11 @@ abstract class BaseSkillCommand extends Command {
     final yamlContent = file.readAsStringSync();
     final yamlList = loadYaml(yamlContent) as YamlList;
     final skills = yamlList
-        .map((e) => SkillParams.fromJson(jsonDecode(jsonEncode(e))))
+        .map(
+          (e) => SkillParams.fromJson(
+            jsonDecode(jsonEncode(e)) as Map<String, dynamic>,
+          ),
+        )
         .toList();
 
     final skillFilter = argResults?['skill'] as String?;
@@ -95,7 +99,7 @@ abstract class BaseSkillCommand extends Command {
 
     int thinkingBudget;
     try {
-      thinkingBudget = int.parse(argResults!['thinking-budget']);
+      thinkingBudget = int.parse(argResults!['thinking-budget'] as String);
     } on FormatException {
       logger.warning(
         'Invalid thinking-budget: ${argResults!['thinking-budget']}. Skipping.',

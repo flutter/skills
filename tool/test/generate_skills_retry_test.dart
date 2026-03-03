@@ -15,14 +15,14 @@ import 'package:test/test.dart';
 
 void main() {
   group('GenerateSkillsCommand Retry Logic', () {
-    late CommandRunner runner;
+    late CommandRunner<void> runner;
     late Directory tempDir;
     late File inputFile;
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('skills_retry_test');
       inputFile = File(p.join(tempDir.path, 'input.yaml'));
-      runner = CommandRunner('skills', 'Test runner');
+      runner = CommandRunner<void>('skills', 'Test runner');
     });
 
     tearDown(() async {

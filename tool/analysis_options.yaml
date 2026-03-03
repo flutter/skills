@@ -13,15 +13,6 @@
 
 include: package:lints/recommended.yaml
 
-# Uncomment the following section to specify additional rules.
-
-# analyzer:
-#   exclude:
-#     - path/to/excluded/files/**
-
-# For more information about the core and recommended set of lints, see
-# https://dart.dev/go/core-lints
-
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`
@@ -35,6 +26,8 @@ linter:
   # producing the lint.
   rules:
     # Error Prevention
+    unnecessary_statements: true
+    no_self_assignments: true
     avoid_catches_without_on_clauses: true
     avoid_catching_errors: true
     avoid_returning_this: true
@@ -113,6 +106,7 @@ linter:
     unnecessary_string_interpolations: true
     unnecessary_this: true
     use_function_type_syntax_for_parameters: true
+    use_if_null_to_convert_nulls_to_bools: true
     use_string_buffers: true
     use_to_and_as_if_applicable: true
 
@@ -128,11 +122,22 @@ linter:
     library_private_types_in_public_api: true
     prefer_asserts_in_initializer_lists: true
     prefer_constructors_over_static_methods: true
+    secure_pubspec_urls: true
+    sort_pub_dependencies: true
+    unnecessary_to_list_in_spreads: true
+    use_super_parameters: true
+    annotate_overrides: true
 
     # Documentation
     dangling_library_doc_comments: true
     library_annotations: true
     public_member_api_docs: true
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

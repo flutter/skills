@@ -15,7 +15,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('ValidateSkillCommand', () {
-    late CommandRunner runner;
+    late CommandRunner<void> runner;
     late Directory tempDir;
     late Directory skillsDir;
     late Directory validationDir;
@@ -64,7 +64,7 @@ void main() {
         ]),
       );
 
-      runner = CommandRunner('skills', 'Test runner')
+      runner = CommandRunner<void>('skills', 'Test runner')
         ..addCommand(
           ValidateSkillCommand(
             environment: {'GEMINI_API_KEY': 'test-key'},
@@ -134,7 +134,7 @@ void main() {
         return http.Response('Not Found', 404);
       });
 
-      runner = CommandRunner('skills', 'Test runner')
+      runner = CommandRunner<void>('skills', 'Test runner')
         ..addCommand(
           ValidateSkillCommand(
             environment: {'GEMINI_API_KEY': 'test-key'},
@@ -179,7 +179,7 @@ void main() {
         ]),
       );
 
-      runner = CommandRunner('skills', 'Test runner')
+      runner = CommandRunner<void>('skills', 'Test runner')
         ..addCommand(
           ValidateSkillCommand(
             environment: {'GEMINI_API_KEY': 'test-key'},
@@ -200,7 +200,7 @@ void main() {
     test('logs severe error when config file not found', () async {
       final path = p.join(tempDir.path, 'NON_EXISTENT.yaml');
 
-      runner = CommandRunner('skills', 'Test runner')
+      runner = CommandRunner<void>('skills', 'Test runner')
         ..addCommand(
           ValidateSkillCommand(
             environment: {'GEMINI_API_KEY': 'test-key'},
@@ -245,7 +245,7 @@ void main() {
         return http.Response('Not Found', 404);
       });
 
-      runner = CommandRunner('skills', 'Test runner')
+      runner = CommandRunner<void>('skills', 'Test runner')
         ..addCommand(
           ValidateSkillCommand(
             environment: {'GEMINI_API_KEY': 'test-key'},
@@ -283,7 +283,7 @@ void main() {
         throw Exception('Network Error');
       });
 
-      runner = CommandRunner('skills', 'Test runner')
+      runner = CommandRunner<void>('skills', 'Test runner')
         ..addCommand(
           ValidateSkillCommand(
             environment: {'GEMINI_API_KEY': 'test-key'},
@@ -332,7 +332,7 @@ void main() {
           return http.Response('Not Found', 404);
         });
 
-        runner = CommandRunner('skills', 'Test runner')
+        runner = CommandRunner<void>('skills', 'Test runner')
           ..addCommand(
             ValidateSkillCommand(
               environment: {'GEMINI_API_KEY': 'test-key'},
@@ -382,7 +382,7 @@ void main() {
         return http.Response('Not Found', 404);
       });
 
-      runner = CommandRunner('skills', 'Test runner')
+      runner = CommandRunner<void>('skills', 'Test runner')
         ..addCommand(
           ValidateSkillCommand(
             environment: {'GEMINI_API_KEY': 'test-key'},
@@ -430,7 +430,7 @@ void main() {
         return http.Response('Not Found', 404);
       });
 
-      runner = CommandRunner('skills', 'Test runner')
+      runner = CommandRunner<void>('skills', 'Test runner')
         ..addCommand(
           ValidateSkillCommand(
             environment: {'GEMINI_API_KEY': 'test-key'},
@@ -510,7 +510,7 @@ Content
         return http.Response('Not Found', 404);
       });
 
-      runner = CommandRunner('skills', 'Test runner')
+      runner = CommandRunner<void>('skills', 'Test runner')
         ..addCommand(
           ValidateSkillCommand(
             environment: {'GEMINI_API_KEY': 'test-key'},
@@ -551,7 +551,7 @@ Content
           (request) async => http.Response('', 200),
         );
 
-        runner = CommandRunner('skills', 'Test runner')
+        runner = CommandRunner<void>('skills', 'Test runner')
           ..addCommand(
             ValidateSkillCommand(
               environment: {'GEMINI_API_KEY': 'test-key'},
@@ -591,7 +591,7 @@ Content
         (request) async => throw Exception('Generic Error'),
       );
 
-      runner = CommandRunner('skills', 'Test runner')
+      runner = CommandRunner<void>('skills', 'Test runner')
         ..addCommand(
           ValidateSkillCommand(
             environment: {'GEMINI_API_KEY': 'test-key'},
@@ -651,7 +651,7 @@ Content
         return http.Response('Not Found', 404);
       });
 
-      runner = CommandRunner('skills', 'Test runner')
+      runner = CommandRunner<void>('skills', 'Test runner')
         ..addCommand(
           ValidateSkillCommand(
             environment: {'GEMINI_API_KEY': 'test-key'},

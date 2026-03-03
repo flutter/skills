@@ -15,9 +15,10 @@ const String version = '0.1.0';
 void main(List<String> arguments) async {
   final httpClient = http.Client();
 
-  final runner = CommandRunner('skills', 'A sample command-line application.')
-    ..addCommand(GenerateSkillCommand(httpClient: httpClient))
-    ..addCommand(ValidateSkillCommand(httpClient: httpClient));
+  final runner =
+      CommandRunner<void>('skills', 'A sample command-line application.')
+        ..addCommand(GenerateSkillCommand(httpClient: httpClient))
+        ..addCommand(ValidateSkillCommand(httpClient: httpClient));
 
   runner.argParser.addFlag(
     'version',
