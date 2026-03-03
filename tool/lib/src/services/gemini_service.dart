@@ -79,7 +79,7 @@ class GeminiService {
       thinkingBudget: thinkingBudget,
     );
 
-    _logger.info(
+    _logger.fine(
       '  Model: $_model, Max Output Tokens: $defaultMaxOutputTokens, Thinking Budget: $thinkingBudget',
     );
 
@@ -161,7 +161,7 @@ On the very last line, output "Grade: [0-100]" representing overall quality of t
       thinkingBudget: thinkingBudget,
     );
 
-    _logger.info(
+    _logger.fine(
       '  Model: $_model, Max Output Tokens: $defaultMaxOutputTokens, Thinking Budget: $thinkingBudget',
     );
 
@@ -297,7 +297,7 @@ Future<String> fetchAndConvertContent(
   final converter = MarkdownConverter();
   final sb = StringBuffer();
   for (final resource in resources) {
-    logger.info('  Fetching $resource...');
+    logger.fine('  Fetching $resource...');
 
     if (resource.startsWith('http://')) {
       throw Exception(

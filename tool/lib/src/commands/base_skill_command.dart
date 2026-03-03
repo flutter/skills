@@ -34,6 +34,10 @@ abstract class BaseSkillCommand extends Command<void> {
         help:
             'The token budget for the model to "think". Defaults to ${GeminiService.defaultThinkingBudget} (recommended for technical documentation).',
         defaultsTo: GeminiService.defaultThinkingBudget.toString(),
+      )
+      ..addFlag(
+        'debug',
+        help: 'Enable debug logging, showing "Fetching" and "Model:" outputs.',
       );
   }
 
@@ -51,6 +55,11 @@ abstract class BaseSkillCommand extends Command<void> {
 
   @override
   Future<void> run() async {
+    final isDebug = argResults?['debug'] as bool? ?? false;
+    if (isDebug && Logger.root.level == Level.INFO) {
+      Logger.root.level = Level.ALL;
+    }
+
     final inputFile = argResults!.rest.isNotEmpty
         ? argResults!.rest.first
         : 'resources/flutter_skills.yaml';
