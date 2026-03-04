@@ -1135,3 +1135,82 @@
     - https://docs.flutter.dev/platform-integration/web/wasm
     - https://docs.flutter.dev/platform-integration/web/web-content-in-flutter
     - https://docs.flutter.dev/resources/faq
+- name: flutter-plugins
+  description: Build a plugin that provides native interop for other apps to use
+  instructions: |
+    To build a plugin, you first need to create the package. You can create a
+    plugin package using the `flutter create --template=plugin` command. When
+    creating the package, you can specify the supported platforms using the
+    `--platforms=` option, followed by a comma-separated list of platforms such
+    as `android`, `ios`, `web`, `linux`, `macos`, and `windows`. If no platforms
+    are specified, the project will not support any platforms. You can also use
+    the `--org` option to specify your organization using reverse domain name
+    notation, which is used in package and bundle identifiers. By default, the
+    plugin project uses Swift for iOS and Kotlin for Android, but you can
+    specify Objective-C or Java using the `-i` and `-a` flags respectively.
+  
+    For FFI plugins, which are useful for accessing the Flutter Plugin API,
+    configuring Google Play services on Android, or using static linking on iOS
+    or macOS, you would use `flutter create --template=plugin_ffi`. This creates
+    an FFI plugin project with Dart code in `lib` that defines the API and calls
+    native code using `dart:ffi`, and native source code in `src` with a
+    `CMakeLists.txt` file for building a dynamic library. FFI plugin packages
+    support bundling native code and method channel registration code, but not
+    method channels themselves. If you need to use both method channels and FFI,
+    you should use a non-FFI plugin. Each platform can use either an FFI or
+    non-FFI plugin.
+  
+    After creating the package, you need to implement it. The API of the plugin
+    package is defined in Dart code, typically in `lib/<package name>.dart`. For
+    Android platform code, it's recommended to edit it using Android Studio. You
+    should build the code at least once before editing, then open the
+    `hello/example/android/build.gradle` or
+    `hello/example/android/build.gradle.kts` file in Android Studio. The Android
+    platform code for your plugin is located in
+    `hello/java/com.example.hello/HelloPlugin`. For Windows, you can open the
+    `hello/example/build/windows/hello_example.sln` file in Visual Studio, and
+    the Windows platform code is in `hello_plugin/Source Files` and
+    `hello_plugin/Header Files`. After making changes to plugin code, you must
+    rebuild the solution.
+  
+    You also need to connect the Dart API with the platform-specific
+    implementations using a platform channel or through interfaces defined in a
+    platform interface package. To add support for specific platforms to an
+    existing plugin project, you can run `flutter create --template=plugin`
+    again in the project directory with the `--platforms=` flag. You might also
+    need to update the `podspec` file to set dependencies and deployment targets
+    for iOS and macOS.
+  
+    Federated plugins are a way to split a plugin's API into a platform
+    interface, independent platform implementations, and an app-facing
+    interface. This allows different teams with different expertise to build
+    plugin implementations for various platforms. A federated plugin requires an
+    app-facing interface for users, one or more platform implementations for
+    platform-specific code, and a platform interface that connects the
+    app-facing interface to the implementations. Package-separated federated
+    plugins separate these components into their own Dart packages. You can add
+    new platform implementations to endorsed federated plugins on pub.dev by
+    coordinating with the original plugin author.
+  
+    For Android plugins, if possible, move logic from `registerWith()` into a
+    private method that both `registerWith()` and `onAttachedToEngine()` can
+    call, as only one will be called. Document all non-overridden public
+    members. If your plugin needs an `Activity` reference, implement the
+    `ActivityAware` interface. If it's expected to be held in a background
+    `Service`, implement `ServiceAware`. Update the example app's
+    `MainActivity.java` to use the v2 embedding `FlutterActivity`. You might
+    also need a public constructor for your plugin class.
+
+  resources:
+    - https://docs.flutter.dev/add-to-app/android/plugin-setup
+    - https://docs.flutter.dev/packages-and-plugins/developing-packages
+    - https://docs.flutter.dev/packages-and-plugins/swift-package-manager/for-plugin-authors
+    - https://docs.flutter.dev/packages-and-plugins/using-packages
+    - https://docs.flutter.dev/platform-integration/desktop
+    - https://docs.flutter.dev/platform-integration/ios/apple-frameworks
+    - https://docs.flutter.dev/platform-integration/platform-channels
+    - https://docs.flutter.dev/release/breaking-changes/flutter-gradle-plugin-apply
+    - https://docs.flutter.dev/release/breaking-changes/plugin-api-migration
+    - https://docs.flutter.dev/testing/plugins-in-tests
+    - https://docs.flutter.dev/testing/testing-plugins
+    - https://docs.flutter.dev/tools/android-studio
