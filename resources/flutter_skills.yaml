@@ -1214,3 +1214,86 @@
     - https://docs.flutter.dev/testing/plugins-in-tests
     - https://docs.flutter.dev/testing/testing-plugins
     - https://docs.flutter.dev/tools/android-studio
+- name: flutter-testing
+  description: Add unit tests, widget tests, or integration tests
+  instructions: |
+    Automated testing is crucial for ensuring an app performs correctly before
+    publication and for maintaining feature and bug fix velocity, especially as
+    an app gains more features, making manual testing harder. Good testing
+    practices contribute to app flexibility, making it straightforward and
+    low-risk to add new logic and UI. Testing is a key aspect of software
+    development, encompassing various types of tests and considerations for
+    different platforms and architectural components.
+
+    Automated testing generally falls into three main categories: unit tests,
+    widget tests, and integration tests. A well-tested app typically includes
+    many unit and widget tests, with code coverage tracking, and enough
+    integration tests to cover important use cases. There are trade-offs between
+    these different kinds of testing regarding confidence, maintenance cost,
+    dependencies, and execution speed.
+
+    Unit tests focus on verifying the correctness of a single function, method,
+    or class. The goal is to test a unit of logic under various conditions,
+    often by mocking out external dependencies. Unit tests generally do not
+    involve disk I/O, screen rendering, or user actions from outside the test
+    process. For architectural components, it is strongly recommended to write
+    unit tests for every service, repository, and ViewModel class, testing the
+    logic of each method individually.
+
+    Widget tests, also known as component tests in other UI frameworks, test a
+    single widget. The purpose of a widget test is to ensure the widget's UI
+    looks and interacts as expected. Testing a widget involves multiple classes
+    and requires a test environment that provides the appropriate widget
+    lifecycle context. Widget tests should be written for views.
+
+    Integration tests verify the behavior of a complete app or a large part of
+    an app. These tests can also be referred to as end-to-end testing or GUI
+    testing. Integration tests are used to validate how individual pieces of an
+    app work together and to capture the performance of an app running on a real
+    device, which unit and widget tests do not cover. The Flutter SDK includes
+    the `integration_test` package for running these tests. Integration tests
+    are particularly important for testing routing and dependency injection. To
+    run integration tests, the `integration_test` package needs to be added as a
+    dependency for the Flutter app's test file. Integration tests can be run
+    from the command line or a CI system for desktop platforms, from the command
+    line or Firebase Test Lab for mobile platforms, and from the command line
+    for web browsers. For Linux apps, a CI system must invoke an X server, often
+    using the `xvfb-run` tool.
+
+    When testing plugins, all usual types of Flutter tests apply, but due to
+    native code, plugins often require additional types of tests. Dart unit
+    tests and widget tests can be used to test the Dart portion of a plugin.
+    Native unit tests are also relevant. For Android, JUnit tests are configured
+    in `android/src/test/`. For iOS and macOS, XCTest tests are found in
+    `example/ios/RunnerTests/` and `example/macos/RunnerTests/` respectively,
+    run via the example app's project. For Linux and Windows, GoogleTest tests
+    are located in `linux/test/` and `windows/test/` respectively. Native UI
+    tests, such as Espresso or XCUITest, can be useful if a plugin cannot be
+    tested without native UI interactions, as they interact with both native and
+    Flutter UI elements. Since only integration tests can test communication
+    between Dart and native languages, it's recommended to have at least one
+    integration test for each platform channel call. If certain flows, like
+    those requiring native UI interaction or mocking device state, cannot be
+    tested with integration tests, "end-to-end" tests can be implemented using
+    native unit tests that call into the method channel entry point with a
+    synthesized call, and Dart unit tests that mock the platform channel and
+    call the plugin's public API.
+
+    Testing architectural components separately and together is a strong
+    recommendation. Observability and testability are important architectural
+    principles, advocating for building in logging, metrics, tracing, and
+    ensuring components can be unit and integration tested.
+  resources:
+    - https://docs.flutter.dev/app-architecture/case-study/testing
+    - https://docs.flutter.dev/app-architecture/concepts
+    - https://docs.flutter.dev/app-architecture/recommendations
+    - https://docs.flutter.dev/cookbook/testing/integration
+    - https://docs.flutter.dev/cookbook/testing/integration/introduction
+    - https://docs.flutter.dev/cookbook/testing/unit/introduction
+    - https://docs.flutter.dev/cookbook/testing/widget/finders
+    - https://docs.flutter.dev/cookbook/testing/widget/introduction
+    - https://docs.flutter.dev/resources/faq
+    - https://docs.flutter.dev/testing
+    - https://docs.flutter.dev/testing/integration-tests
+    - https://docs.flutter.dev/testing/overview
+    - https://docs.flutter.dev/testing/testing-plugins
