@@ -2,16 +2,6 @@
 name: "flutter-environment-setup-windows"
 description: "Set up a Windows environment for Flutter development"
 metadata:
-  urls:
-    - "https://docs.flutter.dev/install"
-    - "https://docs.flutter.dev/install/add-to-path"
-    - "https://docs.flutter.dev/install/manual"
-    - "https://docs.flutter.dev/install/custom"
-    - "https://docs.flutter.dev/install/troubleshoot"
-    - "https://docs.flutter.dev/platform-integration/windows/building"
-    - "https://docs.flutter.dev/platform-integration/windows/setup"
-    - "https://docs.flutter.dev/tools/vs-code"
-  model: "models/gemini-3.1-pro-preview"
   last_modified: "Thu, 26 Feb 2026 23:41:21 GMT"
 
 ---

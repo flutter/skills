@@ -2,14 +2,6 @@
 name: "flutter-environment-setup-macos"
 description: "Set up a macOS environment for Flutter development"
 metadata:
-  urls:
-    - "https://docs.flutter.dev/platform-integration/macos/setup"
-    - "https://docs.flutter.dev/install/add-to-path"
-    - "https://docs.flutter.dev/install/troubleshoot"
-    - "https://docs.flutter.dev/install"
-    - "https://docs.flutter.dev/install/quick"
-    - "https://docs.flutter.dev/platform-integration/ios/setup"
-    - "https://docs.flutter.dev/platform-integration/macos"
   model: "models/gemini-3.1-pro-preview"
   last_modified: "Thu, 26 Feb 2026 23:40:36 GMT"
 

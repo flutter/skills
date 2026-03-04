@@ -2,17 +2,6 @@
 name: "flutter-layout"
 description: "How to build your app's layout using Flutter's layout widgets and constraint system"
 metadata:
-  urls:
-    - "https://docs.flutter.dev/ui/layout"
-    - "https://docs.flutter.dev/ui/layout/tutorial"
-    - "https://docs.flutter.dev/get-started/fundamentals/layout"
-    - "https://docs.flutter.dev/ui/design/material"
-    - "https://docs.flutter.dev/learn/tutorial/layout"
-    - "https://docs.flutter.dev/ui/adaptive-responsive"
-    - "https://docs.flutter.dev/learn/tutorial/adaptive-layout"
-    - "https://docs.flutter.dev/ui/layout/constraints"
-    - "https://docs.flutter.dev/ui/widgets/layout"
-    - "https://docs.flutter.dev/learn/pathway/tutorial/layout"
   model: "models/gemini-3.1-pro-preview"
   last_modified: "Fri, 27 Feb 2026 00:24:00 GMT"
 

@@ -2,17 +2,6 @@
 name: "flutter-architecture"
 description: "Use the Flutter team's recommended app architecture"
 metadata:
-  urls:
-    - "https://docs.flutter.dev/app-architecture"
-    - "https://docs.flutter.dev/app-architecture/concepts"
-    - "https://docs.flutter.dev/app-architecture/guide"
-    - "https://docs.flutter.dev/resources/architectural-overview"
-    - "https://docs.flutter.dev/app-architecture/recommendations"
-    - "https://docs.flutter.dev/app-architecture/design-patterns"
-    - "https://docs.flutter.dev/app-architecture/case-study"
-    - "https://docs.flutter.dev/app-architecture/case-study/data-layer"
-    - "https://docs.flutter.dev/app-architecture/design-patterns/key-value-data"
-    - "https://docs.flutter.dev/learn/pathway/how-flutter-works"
   model: "models/gemini-3.1-pro-preview"
   last_modified: "Thu, 26 Feb 2026 23:42:30 GMT"
 

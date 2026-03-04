@@ -2,16 +2,6 @@
 name: "flutter-environment-setup-linux"
 description: "Set up a Linux environment for Flutter development"
 metadata:
-  urls:
-    - "https://docs.flutter.dev/platform-integration/linux/setup"
-    - "https://docs.flutter.dev/platform-integration/android/setup"
-    - "https://docs.flutter.dev/install"
-    - "https://docs.flutter.dev/deployment/linux"
-    - "https://docs.flutter.dev/platform-integration/linux"
-    - "https://docs.flutter.dev/install/manual"
-    - "https://docs.flutter.dev/install/custom"
-    - "https://docs.flutter.dev/platform-integration/linux/building"
-    - "https://docs.flutter.dev/learn/pathway/quick-install"
   model: "models/gemini-3.1-pro-preview"
   last_modified: "Thu, 26 Feb 2026 23:45:21 GMT"
 
