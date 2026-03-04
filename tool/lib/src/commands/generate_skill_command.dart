@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 
 import '../models/skill_params.dart';
 import '../services/gemini_service.dart';
+import '../services/resource_fetcher_service.dart';
 import 'base_skill_command.dart';
 
 /// Command to generate skills from a configuration file.
@@ -46,10 +47,12 @@ class GenerateSkillCommand extends BaseSkillCommand {
     }
 
     try {
-      final combinedMarkdown = await fetchAndConvertContent(
+      final fetcher = ResourceFetcherService(
+        httpClient: httpClient,
+        logger: logger,
+      );
+      final combinedMarkdown = await fetcher.fetchAndConvertContent(
         skill.resources,
-        httpClient,
-        logger,
         configDir: configDir,
       );
 

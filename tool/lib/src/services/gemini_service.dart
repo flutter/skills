@@ -8,11 +8,10 @@ import 'package:google_cloud_ai_generativelanguage_v1beta/generativelanguage.dar
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
-import 'package:path/path.dart' as p;
 import 'package:retry/retry.dart';
 import 'package:yaml_writer/yaml_writer.dart';
 
-import 'markdown_converter.dart';
+import 'prompts.dart';
 import 'skill_instructions.dart';
 
 /// Service for interacting with the Gemini API to generate and validate skills.
@@ -71,7 +70,7 @@ class GeminiService {
   }) async {
     final service = GenerativeService(client: _client);
     final lastModified = io.HttpDate.format(DateTime.now());
-    final prompt = _createSkillPrompt(rawMarkdown, instructions);
+    final prompt = Prompts.createSkillPrompt(rawMarkdown, instructions);
 
     final request = _createRequest(
       prompt,
@@ -128,32 +127,13 @@ class GeminiService {
     int thinkingBudget = defaultThinkingBudget,
   }) async {
     final service = GenerativeService(client: _client);
-    final validationPrompt =
-        '''
-Validate the following skill document against the provided source material and verify if it is valid.
-Focus on:
-1. Accuracy: Does the skill capture the technical details correctly based on the Source Material?
-2. Structure: Is the skill well-structured according to skill best practices?
-3. Completeness: Is any critical information missing in the skill that is present in the Source Material?
-
-Context:
-- The skill was originally generated on: $generationDate
-- The current evaluation is using model: $modelName
-- The instructions used to generate the skill were:
-$instructions
-
-Source Material:
-$markdown
-
-Current Skill Content:
-  "$currentSkillContent"
----
-
-Grade the current output based on the instructions and the comparison to current website content and instructions today.
-Establish a conclusion on whether the new skill is valid or not.
-Reasons for a good or bad quality grade should be provided including concepts such as missing content, different model used, more than a few months old, etc.
-On the very last line, output "Grade: [0-100]" representing overall quality of the skill compared to the assumed value if it were generated again today.
-''';
+    final validationPrompt = Prompts.validateExistingSkillContentPrompt(
+      markdown,
+      instructions,
+      generationDate,
+      modelName,
+      currentSkillContent,
+    );
 
     final request = _createRequest(
       validationPrompt,
@@ -223,24 +203,6 @@ On the very last line, output "Grade: [0-100]" representing overall quality of t
     return '${cleaned.trim()}\n';
   }
 
-  String _createSkillPrompt(String markdown, String? instructions) {
-    return '''
-Rewrite the following technical documentation into a high-quality "SKILL.md" file.
-
-DO NOT include any YAML frontmatter. Start immediately with the markdown content (e.g. headers).
-
-**Guidelines:**
-1. **Ignore Noise**: Exclude navigation bars, footers, "Edit this page" links, and other non-technical content.
-2. **Decision Trees**: If the content describes a process with multiple choices or steps, YOU MUST create a "Decision Logic" or "Flowchart" section to guide the agent.
-3. **Clarity**: Use clear headings, bullet points, and code blocks.
-4. **Format**: Do NOT wrap the entire output in a markdown code block (like ```markdown ... ```). Return raw markdown text.
-${instructions != null && instructions.isNotEmpty ? '5. **Special Instructions**: $instructions' : ''}
-
-Raw Content:
-$markdown
-''';
-  }
-
   GenerateContentRequest _createRequest(
     String prompt, {
     String? systemInstruction,
@@ -281,66 +243,4 @@ class _ApiKeyClient extends http.BaseClient {
     request.headers['x-goog-api-key'] = _apiKey;
     return _inner.send(request);
   }
-}
-
-/// Fetches and converts content from a list of resources.
-///
-/// Throws an [Exception] if fetching any resource fails. This strict behavior
-/// prevents wasting Gemini tokens on generating low-quality skills when
-/// source material is missing.
-Future<String> fetchAndConvertContent(
-  List<String> resources,
-  http.Client httpClient,
-  Logger logger, {
-  io.Directory? configDir,
-}) async {
-  final converter = MarkdownConverter();
-  final sb = StringBuffer();
-  for (final resource in resources) {
-    logger.info('  Fetching $resource...');
-
-    if (resource.startsWith('http://')) {
-      throw Exception(
-        'Insecure HTTP URL found: $resource. '
-        'Only HTTPS URLs or relative file paths are allowed.',
-      );
-    }
-
-    if (resource.startsWith('https://')) {
-      final response = await httpClient.get(Uri.parse(resource));
-      if (response.statusCode == 200) {
-        sb
-          ..writeln('--- Raw content from $resource ---')
-          ..writeln(converter.convert(response.body));
-      } else {
-        throw Exception(
-          'Failed to fetch $resource: HTTP ${response.statusCode}. '
-          'Failing fast to save Gemini tokens.',
-        );
-      }
-    } else {
-      if (configDir == null) {
-        throw Exception(
-          'Relative resource "$resource" found, but no configuration '
-          'directory was provided to resolve it.',
-        );
-      }
-      final file = io.File(p.join(configDir.path, resource));
-      if (!file.existsSync()) {
-        throw Exception('Local resource file not found: ${file.path}');
-      }
-
-      final String content;
-      try {
-        content = file.readAsStringSync();
-      } on io.FileSystemException {
-        throw Exception('Local resource file is not readable: ${file.path}');
-      }
-
-      sb
-        ..writeln('--- Raw content from $resource ---')
-        ..writeln(content);
-    }
-  }
-  return sb.toString();
 }

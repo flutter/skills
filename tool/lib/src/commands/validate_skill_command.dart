@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 
 import '../models/skill_params.dart';
 import '../services/gemini_service.dart';
+import '../services/resource_fetcher_service.dart';
 import 'base_skill_command.dart';
 
 /// Command to validate skills by re-generating and comparing with existing skills.
@@ -52,10 +53,12 @@ class ValidateSkillCommand extends BaseSkillCommand {
 
     try {
       // Re-generate markdown content
-      final markdown = await fetchAndConvertContent(
+      final fetcher = ResourceFetcherService(
+        httpClient: httpClient,
+        logger: logger,
+      );
+      final markdown = await fetcher.fetchAndConvertContent(
         skill.resources,
-        httpClient,
-        logger,
         configDir: configDir,
       );
 
