@@ -1452,3 +1452,66 @@
     - https://docs.flutter.dev/ui/adaptive-responsive/best-practices
     - https://docs.flutter.dev/ui/adaptive-responsive/general
     - https://docs.flutter.dev/ui/adaptive-responsive/large-screens
+- name: flutter-concurrency
+  description: Execute long-running tasks in a background thread.
+  instructions: |
+    Dart has a single-threaded execution model, which includes support for
+    Isolates, an event loop, and asynchronous code. An Isolate is Dart's
+    implementation of a lightweight thread. All Dart code runs in isolates,
+    which are similar to threads but have their own isolated memory and do not
+    share state. Isolates can only communicate by messaging. By default, Flutter
+    applications perform all their work on a single isolate, known as the main
+    isolate. This model is often sufficient for simpler programming and to keep
+    the application's UI responsive.
+    
+    Unless an Isolate is explicitly spawned, Dart code runs in the main UI
+    thread, which is driven by an event loop. Flutter's event loop is comparable
+    to the iOS main loop. Dart's single-threaded model does not necessitate
+    running all operations as blocking tasks that would freeze the UI. Instead,
+    Dart provides asynchronous features like `async` and `await`. An
+    asynchronous operation allows other operations to execute before it
+    completes. The `async` keyword indicates that a function performs
+    asynchronous work, and `await` tells the system to wait for a result from
+    that function.
+    
+    In Dart, a `Future` object represents a value that will be provided in the
+    future. Functions marked as `async` automatically return a `Future`. Flutter
+    uses `FutureBuilder` and `StreamBuilder` widgets to display the results of a
+    `Future` in the UI.
+    
+    For long-running operations that might block UI rendering, especially on
+    multi-core hardware, tasks can be offloaded to a worker isolate, also known
+    as a background worker. As of Dart 2.19, `Isolate.run()` can be used to
+    spawn an isolate and execute computations. This method spawns an isolate,
+    passes a callback for computation, returns the result, and then shuts down
+    the isolate upon completion, all while running concurrently with the main
+    isolate without blocking it. The `Isolate.run` method requires a single
+    argument, which is a callback function that runs on the new isolate. This
+    callback's function signature must have exactly one required, unnamed
+    argument. When the computation finishes, its value is returned to the main
+    isolate, and the spawned isolate exits. An example use case is decoding a
+    large JSON blob, which, if not offloaded, could make the UI unresponsive.
+    
+    For long-lived isolates that need to pass multiple messages over time, the
+    `Isolate` API and Ports can be used. These are useful for processes that run
+    repeatedly or over a period, yielding multiple return values to the main
+    isolate. Communication between isolates is exclusively through `ReceivePort`
+    and `SendPort`. `SendPort` acts like a `StreamController` for sending
+    messages, while `ReceivePort` functions as a listener, calling a provided
+    callback when a new message is received.
+  resources:
+    - https://docs.flutter.dev/add-to-app/performance
+    - https://docs.flutter.dev/data-and-backend/serialization/json
+    - https://docs.flutter.dev/data-and-backend/state-mgmt/options
+    - https://docs.flutter.dev/flutter-for/dart-swift-concurrency
+    - https://docs.flutter.dev/flutter-for/react-native-devs
+    - https://docs.flutter.dev/flutter-for/uikit-devs
+    - https://docs.flutter.dev/get-started/flutter-for/android-devs
+    - https://docs.flutter.dev/get-started/flutter-for/dart-swift-concurrency
+    - https://docs.flutter.dev/get-started/flutter-for/uikit-devs
+    - https://docs.flutter.dev/get-started/fundamentals/dart
+    - https://docs.flutter.dev/perf/isolates
+    - https://docs.flutter.dev/platform-integration/web/faq
+    - https://docs.flutter.dev/resources/architectural-overview
+    - https://docs.flutter.dev/resources/bootstrap-into-dart
+    - https://docs.flutter.dev/resources/faq
