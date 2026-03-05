@@ -28,9 +28,52 @@ dart run skills generate-skill [options] [config_file]
 *   `--skill`: Filter to generate only the specified skill by name.
 *   `--directory` (`-d`): The directory to output the generated skill folder. Defaults to `../skills/`.
 
+**Example:**
+Generate all skills defined in resources/flutter_skills.yaml to the skills/ directory:
+
+```bash
+dart run skills generate-skill
+```
+
+Generate only the 'flutter-layout' skill to a custom directory:
+
+```bash
+dart run skills generate-skill --skill flutter-layout --directory ../skills
+```
+
+### `update-skill`
+
+Updates an existing skill by combining its current content with fetched resources and new instructions.
+
+**Usage:**
+```bash
+dart run skills update-skill [options] [config_file]
+```
+
+**Arguments:**
+*   `[config_file]`: Path to the YAML configuration file. Defaults to `resources/flutter_skills.yaml`.
+
+**Options:**
+*   `--skill`: Filter to update only the specified skill by name.
+*   `--directory` (`-d`): The directory to search for skills. Defaults to `../skills/`.
+*   `--thinking-budget`: The token budget for the model to "think" before generating content. Defaults to 2048.
+
+**Example:**
+Update all skills defined in resources/flutter_skills.yaml:
+
+```bash
+dart run skills update-skill
+```
+
+Update only the 'flutter-layout' skill:
+
+```bash
+dart run skills update-skill --skill flutter-layout
+```
+
 ### `validate-skill`
 
-Validates skills by re-generating and comparing with existing skills.
+Validates skills by re-generating and comparing with existing skills. This is useful for testing prompts or verifying consistency.
 
 **Usage:**
 ```bash
@@ -42,33 +85,8 @@ dart run skills validate-skill [options] [config_file]
 
 **Options:**
 *   `--skill`: Validate only the specified skill by name.
-*   `--directory` (`-d`): The directory containing the generated skills. Defaults to the output directory or `../skills/`.
+*   `--directory` (`-d`): The directory containing the generated skills to validate. Defaults to `../skills/`.
 *   `--thinking-budget`: The token budget for the model to "think" before generating content. Defaults to 2048.
-
-**Example:**
-Generate all skills defined in resources/flutter_skills.yaml to the skills/ directory:
-
-```bash
-dart run skills generate-skill
-```
-
-Generate only the 'flutter-layout' skill to a custom directory:
-
-```
-dart run skills generate-skill --skill flutter-layout --directory ../skills
-```
-
-### `validate-skill`
-
-Validates generated skills by re-generating them using the same source and comparing the output. This is useful for testing prompts or verifying consistency.
-
-**Usage:**
-```bash
-dart run skills validate-skill [options]
-```
-
-**Options:**
-*   `--directory` (`-d`): The directory containing the generated skills to validate. Defaults to `skills/`.
 
 **Example:**
 Validate skills in the default 'skills' directory:
@@ -78,8 +96,29 @@ dart run skills validate-skill
 ```
 
 Validate skills in a custom directory:
-```
+
+```bash
 dart run skills validate-skill --directory ../validation_results
+```
+
+### `update-readme`
+
+Updates the `README.md` file with a table of available skills.
+
+**Usage:**
+```bash
+dart run skills update-readme [config_file] [readme_file]
+```
+
+**Arguments:**
+*   `[config_file]`: Path to the YAML configuration file. Defaults to `resources/flutter_skills.yaml`.
+*   `[readme_file]`: Path to the README.md file to update. Defaults to `../README.md`.
+
+**Example:**
+Update the root README.md:
+
+```bash
+dart run skills update-readme
 ```
 
 ## Configuration

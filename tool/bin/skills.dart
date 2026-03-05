@@ -8,6 +8,7 @@ import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:skills/src/commands/generate_skill_command.dart';
+import 'package:skills/src/commands/update_readme_command.dart';
 import 'package:skills/src/commands/update_skill_command.dart';
 import 'package:skills/src/commands/validate_skill_command.dart';
 
@@ -20,7 +21,8 @@ void main(List<String> arguments) async {
       CommandRunner<void>('skills', 'A sample command-line application.')
         ..addCommand(GenerateSkillCommand(httpClient: httpClient))
         ..addCommand(UpdateSkillCommand(httpClient: httpClient))
-        ..addCommand(ValidateSkillCommand(httpClient: httpClient));
+        ..addCommand(ValidateSkillCommand(httpClient: httpClient))
+        ..addCommand(UpdateReadmeCommand());
 
   runner.argParser.addFlag(
     'version',

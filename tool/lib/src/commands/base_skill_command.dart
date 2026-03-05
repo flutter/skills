@@ -2,89 +2,43 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
-import 'package:logging/logging.dart';
-import 'package:yaml/yaml.dart';
 
 import '../models/skill_params.dart';
 import '../services/gemini_service.dart';
+import 'base_yaml_command.dart';
 
-/// Base command for skill operations.
-abstract class BaseSkillCommand extends Command<void> {
+/// Base command for skill operations requiring AI generation.
+abstract class BaseSkillCommand extends BaseYamlCommand {
   /// Creates a new [BaseSkillCommand].
   BaseSkillCommand({
     required this.httpClient,
-    required this.logger,
-    this.outputDir,
+    required super.logger,
+    super.outputDir,
     this.environment,
   }) {
-    argParser
-      ..addOption('skill', help: 'Process only the specified skill by name.')
-      ..addOption(
-        'directory',
-        abbr: 'd',
-        help: 'The directory to output/search for skills.',
-      )
-      ..addOption(
-        'thinking-budget',
-        help:
-            'The token budget for the model to "think". Defaults to ${GeminiService.defaultThinkingBudget} (recommended for technical documentation).',
-        defaultsTo: GeminiService.defaultThinkingBudget.toString(),
-      );
+    argParser.addOption(
+      'thinking-budget',
+      help:
+          'The token budget for the model to "think". Defaults to ${GeminiService.defaultThinkingBudget} (recommended for technical documentation).',
+      defaultsTo: GeminiService.defaultThinkingBudget.toString(),
+    );
   }
 
   /// The HTTP client used for fetching resources.
   final http.Client httpClient;
 
-  /// The directory to output or find generated skills.
-  final Directory? outputDir;
-
   /// Optional override for the environment variables, for testing.
   final Map<String, String>? environment;
 
-  /// The logger for this command.
-  final Logger logger;
-
   @override
-  Future<void> run() async {
-    final inputFile = argResults!.rest.isNotEmpty
-        ? argResults!.rest.first
-        : 'resources/flutter_skills.yaml';
-
-    final file = File(inputFile);
-    if (!file.existsSync()) {
-      logger.severe('Configuration file not found: $inputFile');
-      return;
-    }
-
-    final yamlContent = file.readAsStringSync();
-    final yamlList = loadYaml(yamlContent) as YamlList;
-    final skills = yamlList
-        .map(
-          (e) => SkillParams.fromJson(
-            jsonDecode(jsonEncode(e)) as Map<String, dynamic>,
-          ),
-        )
-        .toList();
-
-    final skillFilter = argResults?['skill'] as String?;
-    final targetSkills = skillFilter != null
-        ? skills.where((s) => s.name == skillFilter).toList()
-        : skills;
-
-    if (targetSkills.isEmpty) {
-      if (skillFilter != null) {
-        logger.warning('No skill found with name: $skillFilter');
-      } else {
-        logger.warning('No skills found in configuration file.');
-      }
-      return;
-    }
-
+  Future<void> runWithSkills(
+    List<SkillParams> skills,
+    Directory outputDir, {
+    Directory? configDir,
+  }) async {
     final apiKey = (environment ?? Platform.environment)['GEMINI_API_KEY'];
     if (apiKey == null) {
       logger.severe('GEMINI_API_KEY environment variable not set.');
@@ -92,10 +46,6 @@ abstract class BaseSkillCommand extends Command<void> {
     }
 
     final gemini = GeminiService(apiKey: apiKey, httpClient: httpClient);
-    final directoryArg = argResults?['directory'] as String?;
-    final outDir = directoryArg != null
-        ? Directory(directoryArg)
-        : (outputDir ?? Directory('../skills'));
 
     int thinkingBudget;
     try {
@@ -107,13 +57,13 @@ abstract class BaseSkillCommand extends Command<void> {
       return;
     }
 
-    for (final skill in targetSkills) {
+    for (final skill in skills) {
       await runSkill(
         skill,
         gemini,
-        outDir,
+        outputDir,
         thinkingBudget,
-        configDir: file.parent,
+        configDir: configDir,
       );
     }
   }
