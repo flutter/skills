@@ -9,7 +9,7 @@ metadata:
 # flutter-app-size-optimization
 
 ## Goal
-Analyzes and optimizes Flutter application size by measuring build artifacts, generating size analysis reports, utilizing Dart DevTools for component breakdown, and implementing specific size reduction strategies such as debug info splitting, resource compression, and platform-specific tree-shaking. Assumes a configured Flutter environment and target platform availability.
+Analyze and optimize Flutter application size by measuring build artifacts, generating size analysis reports, utilizing Dart DevTools for component breakdown, and implementing specific size reduction strategies such as debug info splitting, resource compression, and platform-specific tree-shaking. Assumes a configured Flutter environment and target platform availability.
 
 ## Decision Logic
 Use the following decision tree to determine the correct measurement and optimization path:
