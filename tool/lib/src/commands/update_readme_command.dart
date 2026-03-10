@@ -45,9 +45,9 @@ class UpdateReadmeCommand extends BaseYamlCommand {
     final content = readmeFile.readAsStringSync();
 
     // Generate the table
-    final buffer = StringBuffer();
-    buffer.writeln('| Skill | Description |');
-    buffer.writeln('|---|---|');
+    final buffer = StringBuffer()
+      ..writeln('| Skill | Description |')
+      ..writeln('|---|---|');
 
     // Sort skills by name for consistency
     final sortedSkills = List<SkillParams>.from(skills)
@@ -70,7 +70,7 @@ class UpdateReadmeCommand extends BaseYamlCommand {
 
     // Find where to insert the table
     final sectionRegex = RegExp(
-      r'^## (Available Skills|List of Skills|Skills List|Skill Index)',
+      '^## (Available Skills|List of Skills|Skills List|Skill Index)',
       caseSensitive: false,
       multiLine: true,
     );
