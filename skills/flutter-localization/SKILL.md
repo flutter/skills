@@ -3,44 +3,59 @@ name: "flutter-localization"
 description: "Configure your Flutter app to support different languages and regions"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 11 Mar 2026 17:41:02 GMT"
+  last_modified: "Wed, 11 Mar 2026 18:06:58 GMT"
 
 ---
 # Internationalizing-Flutter-Apps
 
 ## When to Use
-* The agent needs to add multi-language support to a Flutter application.
-* The project requires localized strings, date/time formatting, pluralization, or gender-based text rules.
-* The agent encounters assertion errors related to missing `MaterialLocalizations` or `Localizations` parents (e.g., in `TextField` or `CupertinoTabBar`).
-* The project is migrating from the synthetic `package:flutter_gen` to generated source files.
+* The agent needs to add multi-language support, regional formatting (dates, currencies), or right-to-left (RTL) layout support to a Flutter application.
+* The project requires extracting hardcoded strings into App Resource Bundle (`.arb`) files for translation.
+* The agent encounters assertion errors indicating a missing `MaterialLocalizations` ancestor (e.g., when using `TextField`) or a missing `Localizations` parent (e.g., when using `CupertinoTabBar`).
+* The application targets iOS and requires localized App Store metadata.
 
 ## Decision Logic
-Evaluate the project requirements to determine the correct localization path:
-* **If configuring standard app localization:** Use `flutter_localizations`, `intl`, and `l10n.yaml`.
-* **If targeting iOS:** You MUST update the `ios/Runner.xcodeproj` to include supported languages; Flutter does not handle iOS native bundle localization automatically.
-* **If rendering widgets outside a `MaterialApp` or `CupertinoApp`:** Wrap the widget tree with a `Localizations` widget and provide the necessary delegates (`DefaultMaterialLocalizations.delegate`, etc.).
-* **If supporting languages with multiple scripts (e.g., Chinese):** Use `Locale.fromSubtags` to explicitly define `languageCode`, `scriptCode`, and `countryCode`.
+Evaluate the current localization requirements to determine the correct implementation path:
+
+1. **Is the app missing core localization dependencies?**
+   * **Yes:** Add `flutter_localizations` and `intl` to `pubspec.yaml`. Enable `generate: true`.
+2. **Does the app need custom translated strings?**
+   * **Yes:** Create an `l10n.yaml` configuration file and define `.arb` files in `lib/l10n/`. Use `AppLocalizations.delegate`.
+3. **Are you localizing for languages with multiple scripts/regions (e.g., Chinese, French)?**
+   * **Yes:** Use `Locale.fromSubtags(languageCode, scriptCode, countryCode)` instead of the default `Locale` constructor.
+4. **Is a widget (like `TextField` or `CupertinoTabBar`) throwing a `Localizations` assertion error?**
+   * **Yes:** Ensure the widget is a descendant of `MaterialApp`/`CupertinoApp`. If it cannot be, wrap the widget in a `Localizations` widget with the required delegates (`DefaultMaterialLocalizations.delegate`, etc.).
+5. **Is the app being deployed to iOS?**
+   * **Yes:** You must update `ios/Runner.xcodeproj` to include the supported languages so the App Store displays them correctly.
 
 ## Instructions
 
-**Interaction Rule:** Evaluate the current project context for `pubspec.yaml` dependencies (`flutter_localizations`, `intl`), `l10n.yaml` configuration, and target platforms (e.g., iOS). If missing or ambiguous, ask the user for clarification before proceeding with implementation.
+**Interaction Rule:** Evaluate the `pubspec.yaml` and project structure for existing localization configurations (`l10n.yaml`, `.arb` files). If the target locales are missing or ambiguous, ask the user for the required supported languages before proceeding.
 
-1. **Configure Dependencies:** Add `flutter_localizations` and `intl` to `pubspec.yaml`. Enable the `generate: true` flag under the `flutter` section.
-2. **Configure Code Generation:** Create an `l10n.yaml` file in the project root. Define the input directory, template file, and output file. Set `synthetic-package: false` to generate files directly into the source directory.
-3. **Define ARB Files:** Create Application Resource Bundle (`.arb`) files in the designated directory (e.g., `lib/l10n/app_en.arb`). Define key-value pairs, placeholders, plurals, and selects.
-4. **Initialize App:** Import the generated `app_localizations.dart` file. Register `AppLocalizations.localizationsDelegates` and `AppLocalizations.supportedLocales` in the root `MaterialApp` or `CupertinoApp`.
-5. **Update iOS Bundle:** If iOS is a target, open `ios/Runner.xcodeproj` and add the supported languages in the Info tab under Localizations.
+**Plan:**
+1. Configure dependencies and enable code generation.
+2. Set up the localization configuration and translation files.
+3. Inject the generated delegates and supported locales into the app root.
+4. Configure native platform settings (iOS).
+
+**Execute:**
+1. Add `flutter_localizations` (SDK dependency) and `intl` to `pubspec.yaml`. Set `generate: true` under the `flutter` section.
+2. Create `l10n.yaml` in the project root to define the input directory, template file, and output class.
+3. Create the template `.arb` file (e.g., `lib/l10n/app_en.arb`) and subsequent translation files (e.g., `lib/l10n/app_es.arb`).
+4. Import the generated `AppLocalizations` class and apply `AppLocalizations.localizationsDelegates` and `AppLocalizations.supportedLocales` to the `MaterialApp` or `CupertinoApp`.
+5. For iOS, instruct the user or modify the `ios/Runner.xcodeproj/project.pbxproj` to add the supported languages to the `Info` tab.
 
 ## Best Practices
-* **Generate into Source:** Always use `synthetic-package: false` in `l10n.yaml` to generate localization files directly into the `lib/` directory. Do not rely on the legacy `package:flutter_gen` synthetic package.
-* **Use ICU Syntax:** Handle pluralization and gender selection directly within the `.arb` files using ICU message syntax rather than writing conditional Dart logic.
-* **Explicit Placeholders:** Define placeholders in `.arb` files with explicit types (`String`, `int`, `DateTime`) and formats (e.g., `compactCurrency`, `yMd`).
-* **Provide Localizations Context:** Ensure widgets like `TextField` and `CupertinoTabBar` have a `Localizations` ancestor. If they do not descend from `MaterialApp`, inject a `Localizations` widget manually.
-* **Differentiate Complex Locales:** Use `Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans', countryCode: 'CN')` instead of simple string locales for languages requiring script differentiation.
+
+* **Use Code Generation:** Always use the `gen-l10n` tool via `l10n.yaml` rather than manually creating localization delegates.
+* **Define Advanced Locales Precisely:** For languages like Chinese, fully differentiate variants using `Locale.fromSubtags` (e.g., `languageCode: 'zh', scriptCode: 'Hans', countryCode: 'CN'`).
+* **Handle Plurals and Placeholders in ARB:** Utilize ICU message syntax in `.arb` files for plurals, genders, and formatted parameters (e.g., `compactCurrency`, `yMd`) to offload formatting logic from Dart code.
+* **Provide Fallback Localizations:** Always include `GlobalMaterialLocalizations.delegate`, `GlobalWidgetsLocalizations.delegate`, and `GlobalCupertinoLocalizations.delegate` to ensure base Flutter widgets are localized.
+* **Isolate Widget Testing:** When testing widgets that require localizations (like `TextField`), wrap them in a `MaterialApp` or a `Localizations` widget to prevent assertion failures.
 
 ## Examples
 
-### Gold Standard Configuration
+### 1. Configuration and ARB Setup
 
 **`pubspec.yaml`**
 ```yaml
@@ -60,10 +75,9 @@ flutter:
 arb-dir: lib/l10n
 template-arb-file: app_en.arb
 output-localization-file: app_localizations.dart
-synthetic-package: false
 ```
 
-### Gold Standard ARB Definition (`lib/l10n/app_en.arb`)
+**`lib/l10n/app_en.arb`**
 ```json
 {
   "@@locale": "en",
@@ -81,26 +95,29 @@ synthetic-package: false
       }
     }
   },
-  "wombatCount": "{count, plural, =0{no wombats} =1{1 wombat} other{{count} wombats}}",
-  "@wombatCount": {
-    "description": "A plural message",
+  "itemCount": "{count, plural, =0{No items} =1{1 item} other{{count} items}}",
+  "@itemCount": {
+    "description": "A pluralized message",
     "placeholders": {
       "count": {
-        "type": "int",
-        "format": "compact"
+        "type": "int"
       }
     }
   }
 }
 ```
 
-### Gold Standard App Initialization (`lib/main.dart`)
+### 2. App Initialization with Advanced Locales
+
+**`lib/main.dart`**
 ```dart
 import 'package:flutter/material.dart';
-// Import the generated file directly from the source directory
-import 'l10n/app_localizations.dart'; 
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-void main() => runApp(const MyApp());
+void main() {
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -108,9 +125,20 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Localized App',
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
+      onGenerateTitle: (context) => AppLocalizations.of(context)!.helloWorld,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en', 'US'), // English (US)
+        Locale('es', 'ES'), // Spanish (Spain)
+        // Advanced locale definition for Chinese variants
+        Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans', countryCode: 'CN'), // Simplified Chinese
+        Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant', countryCode: 'TW'), // Traditional Chinese
+      ],
       home: const HomePage(),
     );
   }
@@ -121,18 +149,23 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final AppLocalizations l10n = AppLocalizations.of(context)!;
-
+    final l10n = AppLocalizations.of(context)!;
+    
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.helloWorld),
-      ),
+      appBar: AppBar(title: Text(l10n.helloWorld)),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
+          children: [
             Text(l10n.greeting('Alice')),
-            Text(l10n.wombatCount(5)),
+            Text(l10n.itemCount(5)),
+            // TextField requires MaterialLocalizations, provided by MaterialApp
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(labelText: 'Enter text'),
+              ),
+            ),
           ],
         ),
       ),
@@ -141,37 +174,31 @@ class HomePage extends StatelessWidget {
 }
 ```
 
-### Standalone Widget Localization (Fixing TextField/CupertinoTabBar Errors)
-When rendering a `TextField` or `CupertinoTabBar` outside of a `MaterialApp` or `CupertinoApp`, inject the required delegates manually.
+### 3. Standalone Localizations Wrapper (For Isolated Widgets)
 
+Use this pattern if a widget like `TextField` or `CupertinoTabBar` must be used outside of a `MaterialApp` or `CupertinoApp` root.
+
+**`lib/isolated_widget.dart`**
 ```dart
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-class StandaloneTextField extends StatelessWidget {
-  const StandaloneTextField({super.key});
+class IsolatedTextField extends StatelessWidget {
+  const IsolatedTextField({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Localizations(
       locale: const Locale('en', 'US'),
-      delegates: const <LocalizationsDelegate<dynamic>>[
-        DefaultWidgetsLocalizations.delegate,
-        DefaultMaterialLocalizations.delegate,
-        DefaultCupertinoLocalizations.delegate,
+      delegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
       ],
-      child: MediaQuery(
-        data: const MediaQueryData(),
-        child: Directionality(
-          textDirection: TextDirection.ltr,
-          child: Material(
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Enter text here',
-              ),
-            ),
-          ),
+      child: const Directionality(
+        textDirection: TextDirection.ltr,
+        child: Material(
+          child: TextField(),
         ),
       ),
     );

@@ -3,116 +3,102 @@ name: "flutter-app-size"
 description: "Measure and reduce the size of the Flutter app bundle, APK, or IPA"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 11 Mar 2026 17:48:58 GMT"
+  last_modified: "Wed, 11 Mar 2026 18:14:57 GMT"
 
 ---
-# Optimizing-Flutter-App-Size
+# Optimizing-App-Size
 
 ## When to Use
-* The user requests an analysis or reduction of the Flutter application's compiled size.
-* The compiled APK, App Bundle, or IPA exceeds platform size constraints (e.g., Android Instant Apps).
-* The project requires optimization for faster download speeds and a smaller device storage footprint.
-* The user wants to compare the size differences between two different builds or commits.
+* The agent needs to measure the production size of a compiled Flutter application (APK, App Bundle, IPA, or desktop binaries).
+* The user requests an analysis of the app's code size breakdown, including Dart AOT artifacts, native libraries, and assets.
+* The agent is tasked with reducing the overall download or install size of the application.
+* The user wants to compare the size differences between two different application builds.
 
 ## Instructions
 
-**Interaction Rule:** Evaluate the current project context for target platforms (e.g., Android, iOS, Web) and current build configurations. If the target platform or the specific size constraint is missing, ask the user for clarification before proceeding with implementation.
+**Interaction Rule:** Evaluate the current project context to determine the target platform (Android, iOS, desktop) and the specific size reduction goals. If the target platform or build flavor is missing, ask the user for clarification before proceeding with implementation.
 
-1. **Establish the Baseline:** Never use debug builds to measure app size. Debug builds include hot-reload overhead and source-level debugging tools. Always compile a release build.
-2. **Measure Total App Size:** Use platform-specific tools to get an accurate representation of the end-user download and install size, as app stores filter redundant architectures and assets.
-3. **Generate Size Analysis Data:** Compile the application using the `--analyze-size` flag to generate a detailed JSON breakdown of the Dart AOT artifact.
-4. **Analyze the Data:** Use Dart DevTools to inspect the generated JSON file, identifying large packages, libraries, or assets.
-5. **Implement Reduction Strategies:** Apply build flags, asset compression, and code-level tree-shaking to reduce the final binary size.
+**Plan:**
+1. Identify the target platform for the size analysis.
+2. Select the appropriate build command and flags to generate size analysis artifacts.
+3. Determine if a deep-dive analysis (via DevTools) or an App Store estimate (via Xcode) is required.
+4. Formulate a strategy to reduce the app size based on the analysis.
 
-### Decision Logic
+**Execute:**
+1. Run the targeted `flutter build` command with the `--analyze-size` flag.
+2. Locate the generated `*-code-size-analysis_*.json` file.
+3. Launch DevTools to inspect the JSON file, utilizing the treemap or dominator tree to identify large dependencies or assets.
+4. Apply size reduction techniques (e.g., obfuscation, asset compression) and rebuild to verify the size reduction.
+
+## Decision Logic
 
 Use the following decision tree to determine the correct measurement and analysis path:
 
-* **If the goal is to find the exact end-user download size for Android:**
-  * Execute `flutter build appbundle`.
-  * Instruct the user to upload the `.aab` file to the Google Play Console.
-  * Read the size from the **Android vitals -> App size** tab.
-* **If the goal is to find the exact end-user download size for iOS:**
-  * Execute `flutter build ipa --export-method development`.
-  * Open the `.xcarchive` in Xcode.
-  * Select **Distribute App** -> **Development** -> **All compatible device variants** (App Thinning) -> **Strip Swift symbols**.
-  * Read the projected sizes from the generated `App Thinning Size Report.txt`.
-* **If the goal is to analyze the internal breakdown of the app (Dart code, assets, native libraries):**
-  * Execute `flutter build <platform> --analyze-size`.
-  * Launch DevTools using `dart devtools`.
-  * Open the **App Size Tool** and upload the generated `*-code-size-analysis_*.json` file.
-* **If the goal is to compare two different builds:**
-  * Generate the JSON analysis file for both the old and new builds.
-  * Open the **Diff** tab in the DevTools App Size Tool and upload both files.
+* **Is the target platform Android?**
+  * Yes: Run `flutter build apk --analyze-size` or `flutter build appbundle --analyze-size`.
+* **Is the target platform iOS?**
+  * *Goal: Quick relative size analysis of Dart code and assets?*
+    * Run `flutter build ios --analyze-size`.
+  * *Goal: Accurate estimate of end-user download/install size?*
+    * Run `flutter build ipa --export-method development`.
+    * Open the archive in Xcode.
+    * Select "Distribute App" -> "Development".
+    * Enable "All compatible device variants" in App Thinning.
+    * Enable "Strip Swift symbols".
+    * Export and review the `App Thinning Size Report.txt`.
+* **Is the goal to analyze the breakdown of the app size?**
+  * Run `dart devtools`.
+  * Open the "App Size Tool".
+  * Upload the generated `*-code-size-analysis_*.json` file.
+* **Is the goal to compare two different builds?**
+  * Generate size analysis JSON files for both the old and new builds.
+  * Open DevTools -> App Size Tool -> "Diff" tab.
+  * Upload both JSON files to visualize the delta.
 
 ## Best Practices
 
-* **Use Build Flags:** Always use the `--split-debug-info` and `--obfuscate` flags when building release versions. This dramatically reduces code size and makes reverse engineering difficult.
-* **Optimize Assets:** Compress all PNG and JPEG files before bundling them. Remove any unused resources and minimize heavy assets imported from third-party libraries.
-* **Leverage Tree-Shaking:** Rely on the Dart AOT compiler's tree-shaking capabilities. Write platform-specific code using `Platform.isX` checks so the compiler can automatically remove unreachable code for the target platform.
-* **Avoid Redundant Fonts:** Limit the number of custom fonts and font weights included in the `pubspec.yaml` file.
-* **Review Dependencies:** Regularly audit `pubspec.yaml` for large or unnecessary packages. Use the DevTools dominator tree to identify which dependencies are contributing the most to the compiled size.
+* **Never use debug builds for size measurement.** Always compile in release mode, as debug builds contain overhead for hot reload and source-level debugging that drastically inflates the app size.
+* **Strip debug symbols.** Implement the `--split-debug-info` and `--obfuscate` flags during the release build process to extract debug symbols from the compiled binary, significantly reducing code size.
+* **Optimize assets.** Compress all PNG and JPEG files before bundling them. Remove unused resources and minimize heavy resource imports from third-party libraries.
+* **Leverage tree-shaking.** Rely on the Dart AOT compiler's tree-shaking capabilities in profile or release modes. Avoid dynamic invocations or excessive reflection-like patterns that prevent the compiler from identifying and removing dead code.
+* **Use platform-specific code checks.** Wrap platform-specific imports and logic in `if (Platform.isWindows)` (or similar) blocks. The Dart compiler will remove unreachable code for the target platform during the release build.
 
 ## Examples
 
-### Gold Standard Build Commands
-
-To generate a release APK with size analysis, obfuscation, and separated debug info:
+### Example 1: Generating Size Analysis for Android
+Execute the following command to build an Android App Bundle and generate the size analysis JSON file.
 
 ```bash
-# Define the path for debug symbols
-DEBUG_INFO_PATH="build/app/outputs/symbols"
+# Build the release app bundle and generate the size analysis file
+flutter build appbundle --target-platform android-arm,android-arm64,android-x64 --analyze-size
+
+# The output will print a high-level summary to the terminal and generate a file at:
+# build/app/outputs/bundle/release/app-release-code-size-analysis_01.json
+```
+
+### Example 2: Applying Size Reduction Strategies
+Implement obfuscation and debug-info splitting to reduce the final binary size. Define a path to store the extracted debug symbols.
+
+```bash
+# Define the output directory for debug symbols
+DEBUG_INFO_PATH="build/debug_info"
+
+# Create the directory if it does not exist
 mkdir -p $DEBUG_INFO_PATH
 
-# Build the APK with size analysis and size reduction flags
-flutter build apk \
-  --release \
-  --target-platform=android-arm64 \
-  --analyze-size \
-  --obfuscate \
-  --split-debug-info=$DEBUG_INFO_PATH
+# Build the APK with size reduction flags
+flutter build apk --release --obfuscate --split-debug-info=$DEBUG_INFO_PATH --analyze-size
 ```
 
-To generate an iOS build for App Thinning analysis:
+### Example 3: Launching DevTools for Deep Analysis
+Once the JSON analysis file is generated, launch DevTools to inspect the dominator tree and call graph.
 
 ```bash
-# Build the IPA configured for development export
-flutter build ipa \
-  --release \
-  --export-method development \
-  --obfuscate \
-  --split-debug-info=build/ios/symbols
-```
+# Launch Dart DevTools
+dart devtools
 
-### Tree-Shaking Platform-Specific Code
-
-The Dart compiler automatically removes unreachable code. Use explicit `Platform` checks to ensure unused platform-specific logic is stripped from the final binary.
-
-```dart
-import 'dart:io' show Platform;
-import 'package:flutter/material.dart';
-
-// Gold Standard: The compiler will tree-shake the Windows-specific 
-// code when building for Android or iOS, reducing the app size.
-class AdaptiveFeature extends StatelessWidget {
-  const AdaptiveFeature({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    if (Platform.isWindows) {
-      return _buildWindowsSpecificFeature();
-    }
-    return _buildMobileFeature();
-  }
-
-  Widget _buildWindowsSpecificFeature() {
-    // Heavy Windows-specific implementation
-    return const Text('Windows Feature');
-  }
-
-  Widget _buildMobileFeature() {
-    // Mobile implementation
-    return const Text('Mobile Feature');
-  }
-}
+# 1. Open the provided localhost URL in a browser.
+# 2. Navigate to the "App Size" tab.
+# 3. Drag and drop the generated `*-code-size-analysis_*.json` file into the UI.
+# 4. Use the Treemap to identify large assets and the Dominator Tree to find the root cause of large package inclusions.
 ```

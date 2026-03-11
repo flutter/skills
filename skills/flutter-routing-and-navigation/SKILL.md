@@ -3,74 +3,63 @@ name: "flutter-routing-and-navigation"
 description: "Move between or deep link to different screens or routes within a Flutter application"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 11 Mar 2026 17:39:28 GMT"
+  last_modified: "Wed, 11 Mar 2026 18:05:22 GMT"
 
 ---
-# Implementing-Flutter-Navigation-and-Routing
+# Navigating-And-Routing-Flutter-Apps
 
 ## When to Use
-* The agent needs to move users between different screens (referred to as "routes" in Flutter, which are simply widgets) within an application.
-* The project requires deep linking to open the app directly to a specific location or "deep" inside the app when a URL is received (e.g., from an advertisement).
-* The application requires passing data to a new screen or returning data from a screen.
-* The UI design involves nested navigation flows, adding tabs to an app, or adding a drawer to a screen.
-* The agent must choose between imperative navigation (`Navigator`) and declarative navigation (`Router` / `go_router`).
-
-## Instructions
-
-**Interaction Rule:** Evaluate the current project context for routing complexity, deep linking requirements, and existing routing packages (e.g., `go_router`). If missing, ask the user for clarification before proceeding with implementation.
-
-1. **Plan:** Analyze the application's navigation requirements. Determine if the app needs simple stack-based navigation or advanced declarative routing with deep linking support.
-2. **Evaluate:** Check if the app targets the web. If running in a web browser, no additional setup is required for deep linking, but URL strategies may need configuration.
-3. **Select:** Choose the appropriate navigation API based on the Decision Logic below. 
-4. **Define:** Create self-documenting constants for route paths (e.g., `const String routeHome = '/';`).
-5. **Execute:** Implement the navigation logic. Use `Navigator.push()` to go to a new route and `Navigator.pop()` to return to the previous route for simple tasks.
-6. **Integrate:** If passing data, define strongly typed classes for the arguments and pass them via widget constructors.
+* The agent needs to implement screen transitions, dialogs, or deep linking in a Flutter application.
+* The user requests passing data or state between different screens.
+* The project requires nested navigation flows (e.g., bottom navigation bars with independent stacks, multi-step setup wizards).
+* The application needs to support web URL synchronization or mobile deep links.
 
 ## Decision Logic
+Evaluate the project requirements to determine the appropriate routing strategy:
 
-Follow this decision tree to select the correct navigation approach:
+1. **Routing Architecture:**
+   * *If* the app is simple, has no complex deep linking, and does not target the web -> **Use** imperative `Navigator` (`Navigator.push`, `Navigator.pop`).
+   * *If* the app requires deep linking, web URL synchronization, or advanced routing -> **Use** the declarative `Router` API (highly recommended to use the `go_router` package).
+   * *If* the app currently uses named routes (`MaterialApp.routes`) -> **Migrate** to `go_router` or standard `Navigator` with `MaterialPageRoute`, as named routes are not recommended for deep linking or web.
+2. **Passing Data:**
+   * *If* passing data to a new screen -> **Prefer** passing strongly typed objects directly via the destination widget's constructor.
+   * *If* using named routes or `onGenerateRoute` -> **Use** `RouteSettings.arguments` and extract via `ModalRoute.of(context)!.settings.arguments`.
+3. **Nested Navigation:**
+   * *If* building a sub-flow (e.g., a multi-step form or persistent bottom nav) -> **Use** a nested `Navigator` widget with its own `GlobalKey<NavigatorState>` and `onGenerateRoute` implementation.
 
-* **Does the app require deep linking, web URL synchronization, or advanced routing?**
-  * **Yes:** Use the `Router` API. It is highly recommended to use a declarative routing package like `go_router` to parse route paths and configure the `Navigator` automatically.
-  * **No:** Proceed to the next question.
-* **Does the app require independent, nested navigation stacks (e.g., a setup flow or persistent bottom navigation bar)?**
-  * **Yes:** Implement a nested `Navigator` widget with its own `GlobalKey<NavigatorState>` and `onGenerateRoute` logic.
-  * **No:** Proceed to the next question.
-* **Is the navigation simple, linear, and strictly stack-based?**
-  * **Yes:** Use the imperative `Navigator` API (`Navigator.push()` and `Navigator.pop()`) with `MaterialPageRoute` or `CupertinoPageRoute`.
-  * **No:** Re-evaluate the app's architecture; default to `go_router` for scalable navigation.
-
-*(Note: While named routes via `MaterialApp.routes` can be used for deep linking, they are generally not recommended for most applications due to limitations with customization and browser forward-button support.)*
+## Instructions
+1. **Analyze Context:** Scan the `pubspec.yaml` and `lib/main.dart` to determine the existing routing strategy (e.g., `go_router`, `auto_route`, or vanilla `Navigator`).
+2. **Interaction Rule:** If the routing strategy is ambiguous, or if the user requests deep linking but no declarative router is configured, ask the user for clarification on whether to introduce `go_router` before proceeding.
+3. **Define Routes:** Extract all route paths into self-documenting constants (e.g., `const String routeHome = '/';`).
+4. **Implement Navigation:** Write the navigation logic using the selected strategy. Ensure transitions match the target platform (`MaterialPageRoute` vs `CupertinoPageRoute`).
+5. **Handle State:** If passing data, define a dedicated class for the arguments to ensure type safety.
+6. **Manage Back Navigation:** Implement `PopScope` to handle hardware back buttons and swipe-to-go-back gestures, especially within nested flows to prevent accidental app exits.
 
 ## Best Practices
-
-* **Prefer Declarative Routing:** Use the `Router` API (via packages like `go_router`) for applications requiring deep linking and web support. It ensures the same screens are displayed when a deep link is received.
-* **Avoid Named Routes:** Do not use `Navigator.pushNamed` or `MaterialApp.routes` for most applications. They lack advanced deep link customization and break browser forward-button behavior.
-* **Pass Data via Constructors:** Pass data to new screens using strongly typed constructor arguments rather than relying on `RouteSettings.arguments`. This improves type safety and readability.
-* **Use Platform-Specific Transitions:** Use `CupertinoPageRoute` for iOS-style slide-in transitions and `MaterialPageRoute` for standard Android-style transitions.
-* **Handle Hardware Back Buttons:** Implement the `PopScope` widget to intercept hardware back button presses, especially in nested flows or forms, to prevent accidental data loss.
-* **Define Route Constants:** Always use self-documenting constants for route paths (e.g., `const String routeDeviceSetup = '/setup';`) to prevent typos and centralize route definitions.
+* **Avoid Named Routes:** Do not use `MaterialApp.routes` for new applications. They lack deep link customization and do not support the browser forward button. Use `go_router` or `Navigator.push` instead.
+* **Enforce Type Safety:** Pass data via constructor arguments for compile-time safety rather than relying on dynamic `RouteSettings.arguments`.
+* **Optimize Deep Linking:** When using the `Router` API, ensure routes are *page-backed* so they are deep-linkable. Pageless routes (created via `Navigator.push` in a Router app) will be removed if a deep link alters the page-backed route beneath them.
+* **Handle Platform Transitions:** Use `CupertinoPageRoute` for iOS-style slide-in transitions and `MaterialPageRoute` for Android-style fade/zoom transitions.
+* **Isolate Nested Navigators:** Always assign a `GlobalKey<NavigatorState>` to nested `Navigator` widgets to control them programmatically without affecting the root `Navigator`.
 
 ## Examples
 
-### Gold Standard: Basic Imperative Navigation with Data Passing
-
-Use this pattern for simple, non-deep-linked navigation where data must be passed between screens.
+### Example 1: Imperative Navigation with Strongly Typed Data
+Demonstrates navigating to a detail screen by passing data directly through the constructor.
 
 ```dart
-// lib/models/todo.dart
+import 'package:flutter/material.dart';
+
+// 1. Define the data model
 class Todo {
+  final String id;
   final String title;
   final String description;
 
-  const Todo({required this.title, required this.description});
+  const Todo({required this.id, required this.title, required this.description});
 }
 
-// lib/screens/todos_screen.dart
-import 'package:flutter/material.dart';
-import '../models/todo.dart';
-import 'detail_screen.dart';
-
+// 2. List Screen
 class TodosScreen extends StatelessWidget {
   final List<Todo> todos;
 
@@ -102,10 +91,7 @@ class TodosScreen extends StatelessWidget {
   }
 }
 
-// lib/screens/detail_screen.dart
-import 'package:flutter/material.dart';
-import '../models/todo.dart';
-
+// 3. Detail Screen
 class DetailScreen extends StatelessWidget {
   final Todo todo;
 
@@ -124,52 +110,46 @@ class DetailScreen extends StatelessWidget {
 }
 ```
 
-### Gold Standard: Nested Navigation Flow
-
-Use this pattern when a sub-flow (like a setup wizard) requires its own navigation stack independent of the global app navigation.
+### Example 2: Complex Nested Navigation Flow
+Demonstrates a nested `Navigator` for a multi-step setup flow, complete with hardware back-button handling via `PopScope`.
 
 ```dart
-// lib/screens/setup_flow.dart
 import 'package:flutter/material.dart';
 
-const String routeSetupStart = 'start';
-const String routeSetupConnecting = 'connecting';
+// Route Constants
+const String routeSetupStart = '/';
+const String routeSetupStepTwo = '/step_two';
+const String routeSetupFinished = '/finished';
 
 class SetupFlow extends StatefulWidget {
-  final String initialRoute;
-
-  const SetupFlow({super.key, required this.initialRoute});
+  const SetupFlow({super.key});
 
   @override
   State<SetupFlow> createState() => _SetupFlowState();
 }
 
 class _SetupFlowState extends State<SetupFlow> {
+  // Dedicated key for the nested navigator
   final GlobalKey<NavigatorState> _nestedNavigatorKey = GlobalKey<NavigatorState>();
 
-  void _exitSetup() {
-    // Pops the entire setup flow off the root navigator
-    Navigator.of(context).pop();
-  }
-
   Future<bool> _confirmExit() async {
-    return await showDialog<bool>(
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Exit Setup?'),
         content: const Text('Your progress will be lost.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Leave'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Stay'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Exit')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Stay')),
         ],
       ),
-    ) ?? false;
+    );
+    return result ?? false;
+  }
+
+  void _exitSetup() {
+    // Pops the root navigator, exiting the entire flow
+    Navigator.of(context, rootNavigator: true).pop();
   }
 
   @override
@@ -178,6 +158,14 @@ class _SetupFlowState extends State<SetupFlow> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
+        
+        // Check if nested navigator can pop
+        if (_nestedNavigatorKey.currentState?.canPop() ?? false) {
+          _nestedNavigatorKey.currentState?.pop();
+          return;
+        }
+
+        // If at the start of the nested flow, confirm exit
         if (await _confirmExit() && context.mounted) {
           _exitSetup();
         }
@@ -192,21 +180,26 @@ class _SetupFlowState extends State<SetupFlow> {
               }
             },
           ),
-          title: const Text('Device Setup'),
+          title: const Text('Setup Wizard'),
         ),
         body: Navigator(
           key: _nestedNavigatorKey,
-          initialRoute: widget.initialRoute,
+          initialRoute: routeSetupStart,
           onGenerateRoute: (RouteSettings settings) {
             Widget page;
             switch (settings.name) {
               case routeSetupStart:
-                page = StartPage(
-                  onNext: () => _nestedNavigatorKey.currentState!.pushNamed(routeSetupConnecting),
+                page = StepOnePage(
+                  onNext: () => _nestedNavigatorKey.currentState?.pushNamed(routeSetupStepTwo),
                 );
                 break;
-              case routeSetupConnecting:
-                page = ConnectingPage(onComplete: _exitSetup);
+              case routeSetupStepTwo:
+                page = StepTwoPage(
+                  onNext: () => _nestedNavigatorKey.currentState?.pushNamed(routeSetupFinished),
+                );
+                break;
+              case routeSetupFinished:
+                page = FinishedPage(onFinish: _exitSetup);
                 break;
               default:
                 throw StateError('Unexpected route: ${settings.name}');
@@ -222,41 +215,22 @@ class _SetupFlowState extends State<SetupFlow> {
   }
 }
 
-// lib/screens/start_page.dart
-import 'package:flutter/material.dart';
-
-class StartPage extends StatelessWidget {
+// Sub-pages (Implementation details omitted for brevity)
+class StepOnePage extends StatelessWidget {
   final VoidCallback onNext;
-
-  const StartPage({super.key, required this.onNext});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: ElevatedButton(
-        onPressed: onNext,
-        child: const Text('Find Devices'),
-      ),
-    );
-  }
+  const StepOnePage({super.key, required this.onNext});
+  @override Widget build(BuildContext context) => Center(child: ElevatedButton(onPressed: onNext, child: const Text('Next')));
 }
 
-// lib/screens/connecting_page.dart
-import 'package:flutter/material.dart';
+class StepTwoPage extends StatelessWidget {
+  final VoidCallback onNext;
+  const StepTwoPage({super.key, required this.onNext});
+  @override Widget build(BuildContext context) => Center(child: ElevatedButton(onPressed: onNext, child: const Text('Next')));
+}
 
-class ConnectingPage extends StatelessWidget {
-  final VoidCallback onComplete;
-
-  const ConnectingPage({super.key, required this.onComplete});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: ElevatedButton(
-        onPressed: onComplete,
-        child: const Text('Finish Setup'),
-      ),
-    );
-  }
+class FinishedPage extends StatelessWidget {
+  final VoidCallback onFinish;
+  const FinishedPage({super.key, required this.onFinish});
+  @override Widget build(BuildContext context) => Center(child: ElevatedButton(onPressed: onFinish, child: const Text('Finish')));
 }
 ```

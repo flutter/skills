@@ -3,213 +3,189 @@ name: "flutter-architecture"
 description: "Build an app using the Flutter team's recommended app architecture"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 11 Mar 2026 17:37:09 GMT"
+  last_modified: "Wed, 11 Mar 2026 18:03:18 GMT"
 
 ---
 # Architecting-Flutter-Apps
 
+## Goal
+The agent implements a scalable, maintainable, and testable Flutter application architecture using the Model-View-ViewModel (MVVM) pattern, unidirectional data flow, and strict separation of concerns across UI, Domain, and Data layers.
+
 ## When to Use
-* The agent is initializing a new Flutter project that requires a scalable, maintainable codebase.
-* The agent is refactoring an existing Flutter application to separate UI components from business logic and data sources.
-* The agent needs to implement data fetching, caching, or state management using the Model-View-ViewModel (MVVM) pattern and layered architecture.
+* Bootstrapping a new Flutter project intended for scale.
+* Refactoring a monolithic Flutter codebase into a layered architecture.
+* Implementing state management, data fetching, and local caching.
+* Structuring project directories for a growing team and codebase.
 
 ## Instructions
 
-**Plan**
-1. Identify the distinct features of the application (e.g., Authentication, Search, User Profile).
-2. Determine the external data sources (REST APIs, local databases, device sensors) required for each feature.
-3. Map the flow of data from the source to the UI to establish the necessary Services, Repositories, and ViewModels.
+**Interaction Rule:** Evaluate the current project context for architectural requirements (e.g., preferred state management solution, API endpoints, local storage needs). If missing or ambiguous, ask the user for clarification before proceeding with implementation.
 
-**Execute**
-1. **Implement the Data Layer:** Create stateless Services to wrap external APIs. Create Repositories to consume Services, handle caching, and transform raw data into domain models.
-2. **Implement the Logic Layer:** Create ViewModels to manage UI state, format data for presentation, and expose commands for user interactions.
-3. **Implement the UI Layer:** Build lean, declarative Widgets that observe ViewModels and rebuild only when state changes.
-
-**Interaction Rule:** Evaluate the current project context for preferred state management solutions (e.g., `Provider`, `Riverpod`, `Bloc`) and dependency injection setups. If missing or ambiguous, ask the user for clarification before proceeding with implementation.
+1. **Plan:**
+   * Identify the feature scope and required data sources.
+   * Map out the required Services (external APIs), Repositories (single source of truth), ViewModels (UI state), and Views (Widgets).
+2. **Execute Data Layer:**
+   * Implement stateless Service classes to wrap external APIs or local storage.
+   * Implement Repository classes to consume Services, handle caching/retry logic, and expose immutable Domain Models.
+3. **Execute Domain Layer (Optional):**
+   * Implement Use-Cases (Interactors) only if the business logic is exceedingly complex or requires merging data from multiple Repositories.
+4. **Execute UI Layer:**
+   * Implement ViewModels (using `ChangeNotifier` or similar) to manage UI state and expose Commands for user interactions.
+   * Implement Views (Widgets) that listen to ViewModels and render the UI declaratively.
+5. **Wire Dependencies:**
+   * Inject Services into Repositories, and Repositories into ViewModels using a dependency injection container (e.g., `provider`).
 
 ## Decision Logic
 
-Use the following logic to determine where code belongs within the architecture:
+Use the following logic to determine architectural boundaries and folder structures:
 
-* **Does the code interact with an external API, database, or platform plugin?**
-  * **Yes:** Place it in a **Service** class. Keep it stateless and strictly focused on data retrieval/submission.
-* **Does the code manage data synchronization, caching, or transform raw API data into application models?**
-  * **Yes:** Place it in a **Repository** class. Ensure it acts as the single source of truth for that data type.
-* **Does the code format data specifically for the screen or hold temporary UI state (e.g., loading spinners, form input)?**
-  * **Yes:** Place it in a **ViewModel** (or Logic/Domain) class.
-* **Does the code define the visual layout or handle direct user touch events?**
-  * **Yes:** Place it in a **View** (Widget). Ensure it contains zero business logic.
-* **Does the business logic require combining data from multiple Repositories or involve highly complex calculations?**
-  * **Yes:** Extract it into a **Domain Use-Case** class to prevent ViewModel bloat.
+* **Do you need a Domain Layer (Use-Cases)?**
+  * *If* the feature requires merging data from multiple repositories, contains exceedingly complex business logic, or shares logic across multiple ViewModels -> **Yes**. Create `lib/domain/usecases/`.
+  * *If* the feature simply reads/writes data from a single repository -> **No**. The ViewModel should interact with the Repository directly.
+* **How should the project directories be structured?**
+  * *UI Layer* -> Group by feature (e.g., `lib/ui/auth/view_models/`, `lib/ui/auth/widgets/`).
+  * *Data/Domain Layer* -> Group by type (e.g., `lib/data/repositories/`, `lib/data/services/`, `lib/domain/models/`).
+  * *Shared UI* -> Place reusable widgets and themes in `lib/ui/core/`.
 
 ## Best Practices
 
-* **Enforce Unidirectional Data Flow:** Ensure data flows strictly from the Data Layer -> Logic Layer -> UI Layer. User events flow from UI Layer -> Logic Layer -> Data Layer.
-* **Keep Widgets Lean:** Strip all business logic, data formatting, and complex conditional statements from Widgets. Delegate these responsibilities to the ViewModel.
-* **Use Immutable State:** Define UI state and domain models as immutable objects. When state changes, emit a completely new instance to trigger UI rebuilds predictably.
-* **Isolate Dependencies:** Never allow the UI layer to communicate directly with a Service. Always route data requests through a Repository.
-* **Implement Dependency Injection:** Inject Services into Repositories, and Repositories into ViewModels. Do not use global singletons for data access.
-* **Standardize Error Handling:** Wrap Service and Repository return types in a `Result` (Success/Error) object to force the Logic layer to handle failures explicitly.
+* **Enforce Unidirectional Data Flow:** Ensure data flows strictly from the Data Layer -> UI Layer. Events must flow from the UI Layer -> Data Layer.
+* **Keep Views "Dumb":** Restrict View logic to simple UI conditionals, animations, and routing. Delegate all business and state logic to the ViewModel.
+* **Use Immutable Data Models:** Define all domain and API models as immutable. Use code generation packages like `freezed` or `built_value` to generate `copyWith`, equality, and serialization methods.
+* **Implement the Command Pattern:** Wrap ViewModel actions in Command objects to standardize how the UI layer sends events to the data layer and to safely handle loading/error states.
+* **Use Result Objects for Error Handling:** Return `Result<T>` or `Either<L, R>` from Services and Repositories to handle errors explicitly. Do not rely on unhandled exceptions crossing architectural boundaries.
+* **Inject Dependencies:** Pass dependencies via constructors. Never instantiate Repositories or Services directly inside a ViewModel.
 
 ## Examples
 
-### Gold Standard: Layered MVVM Architecture
+### 1. Data Layer: Service and Repository
+Define a stateless service to handle external calls, and a repository to act as the single source of truth.
 
-**1. Service (Data Layer)**
-Wraps the external API. Stateless and strictly handles network requests.
-`lib/data/services/user_api_service.dart`
+**File:** `lib/data/services/shared_preferences_service.dart`
 ```dart
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
-class UserApiService {
-  static const String _baseUrl = 'https://api.example.com/v1';
+class SharedPreferencesService {
+  static const String _kDarkMode = 'darkMode';
 
-  Future<Map<String, dynamic>> fetchUserProfile(String userId) async {
-    final response = await http.get(Uri.parse('$_baseUrl/users/$userId'));
-    
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to fetch user profile');
-    }
+  Future<void> setDarkMode(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kDarkMode, value);
+  }
+
+  Future<bool> isDarkMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kDarkMode) ?? false;
   }
 }
 ```
 
-**2. Repository (Data Layer)**
-Consumes the Service, handles errors, and transforms raw data into a Domain Model.
-`lib/data/repositories/user_repository.dart`
+**File:** `lib/data/repositories/theme_repository.dart`
 ```dart
-import '../services/user_api_service.dart';
-import '../../domain/models/user_profile.dart';
-import '../../utils/result.dart';
+import 'dart:async';
+import 'package:my_app/data/services/shared_preferences_service.dart';
+import 'package:my_app/utils/result.dart'; // Assume a standard Result/Either implementation
 
-class UserRepository {
-  final UserApiService _apiService;
-  UserProfile? _cachedProfile;
+class ThemeRepository {
+  ThemeRepository(this._service);
 
-  UserRepository(this._apiService);
+  final SharedPreferencesService _service;
+  final _darkModeController = StreamController<bool>.broadcast();
 
-  Future<Result<UserProfile>> getUserProfile(String userId, {bool forceRefresh = false}) async {
-    if (!forceRefresh && _cachedProfile != null) {
-      return Result.success(_cachedProfile!);
-    }
-
+  Future<Result<bool>> isDarkMode() async {
     try {
-      final rawData = await _apiService.fetchUserProfile(userId);
-      final profile = UserProfile.fromJson(rawData);
-      _cachedProfile = profile;
-      return Result.success(profile);
-    } catch (e) {
-      return Result.error(e.toString());
+      final value = await _service.isDarkMode();
+      return Result.ok(value);
+    } on Exception catch (e) {
+      return Result.error(e);
     }
   }
+
+  Future<Result<void>> setDarkMode(bool value) async {
+    try {
+      await _service.setDarkMode(value);
+      _darkModeController.add(value);
+      return Result.ok(null);
+    } on Exception catch (e) {
+      return Result.error(e);
+    }
+  }
+
+  Stream<bool> observeDarkMode() => _darkModeController.stream;
 }
 ```
 
-**3. ViewModel (Logic Layer)**
-Manages UI state and exposes commands for the View.
-`lib/ui/profile/profile_view_model.dart`
+### 2. UI Layer: ViewModel and View
+Define a ViewModel to manage state and expose commands, and a View to render the UI.
+
+**File:** `lib/ui/settings/view_models/theme_switch_viewmodel.dart`
 ```dart
 import 'package:flutter/foundation.dart';
-import '../../data/repositories/user_repository.dart';
-import '../../domain/models/user_profile.dart';
+import 'package:my_app/data/repositories/theme_repository.dart';
+import 'package:my_app/utils/command.dart'; // Assume a standard Command implementation
 
-class ProfileViewModel extends ChangeNotifier {
-  final UserRepository _userRepository;
-  
-  ProfileViewModel(this._userRepository);
+class ThemeSwitchViewModel extends ChangeNotifier {
+  ThemeSwitchViewModel(this._themeRepository) {
+    load = Command0(_load)..execute();
+    toggle = Command0(_toggle);
+  }
 
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
+  final ThemeRepository _themeRepository;
+  bool _isDarkMode = false;
 
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
+  bool get isDarkMode => _isDarkMode;
 
-  UserProfile? _userProfile;
-  UserProfile? get userProfile => _userProfile;
+  late final Command0<void> load;
+  late final Command0<void> toggle;
 
-  Future<void> loadProfile(String userId) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    final result = await _userRepository.getUserProfile(userId);
-
-    if (result.isSuccess) {
-      _userProfile = result.value;
-    } else {
-      _errorMessage = result.error;
+  Future<Result<void>> _load() async {
+    final result = await _themeRepository.isDarkMode();
+    if (result is Ok<bool>) {
+      _isDarkMode = result.value;
+      notifyListeners();
     }
+    return result;
+  }
 
-    _isLoading = false;
+  Future<Result<void>> _toggle() async {
+    _isDarkMode = !_isDarkMode;
+    final result = await _themeRepository.setDarkMode(_isDarkMode);
     notifyListeners();
+    return result;
   }
 }
 ```
 
-**4. View (UI Layer)**
-Observes the ViewModel and rebuilds when state changes. Contains no business logic.
-`lib/ui/profile/profile_view.dart`
+**File:** `lib/ui/settings/widgets/theme_switch.dart`
 ```dart
 import 'package:flutter/material.dart';
-import 'profile_view_model.dart';
+import 'package:my_app/ui/settings/view_models/theme_switch_viewmodel.dart';
 
-class ProfileView extends StatefulWidget {
-  final ProfileViewModel viewModel;
-  final String userId;
+class ThemeSwitch extends StatelessWidget {
+  const ThemeSwitch({super.key, required this.viewmodel});
 
-  const ProfileView({
-    Key? key, 
-    required this.viewModel, 
-    required this.userId,
-  }) : super(key: key);
-
-  @override
-  State<ProfileView> createState() => _ProfileViewState();
-}
-
-class _ProfileViewState extends State<ProfileView> {
-  @override
-  void initState() {
-    super.initState();
-    // Execute command on initialization
-    widget.viewModel.loadProfile(widget.userId);
-  }
+  final ThemeSwitchViewModel viewmodel;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: ListenableBuilder(
-        listenable: widget.viewModel,
-        builder: (context, _) {
-          if (widget.viewModel.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (widget.viewModel.errorMessage != null) {
-            return Center(child: Text('Error: ${widget.viewModel.errorMessage}'));
-          }
-
-          final profile = widget.viewModel.userProfile;
-          if (profile == null) {
-            return const Center(child: Text('No profile data available.'));
-          }
-
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Name: ${profile.name}', style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 8),
-                Text('Email: ${profile.email}'),
-              ],
-            ),
-          );
-        },
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('Dark Mode'),
+          ListenableBuilder(
+            listenable: viewmodel,
+            builder: (context, _) {
+              return Switch(
+                value: viewmodel.isDarkMode,
+                onChanged: (_) {
+                  viewmodel.toggle.execute();
+                },
+              );
+            },
+          ),
+        ],
       ),
     );
   }

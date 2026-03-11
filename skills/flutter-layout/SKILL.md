@@ -3,194 +3,196 @@ name: "flutter-layout"
 description: "How to build your app's layout using Flutter's layout widgets and constraint system"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 11 Mar 2026 17:37:51 GMT"
+  last_modified: "Wed, 11 Mar 2026 18:03:58 GMT"
 
 ---
-# Architecting-Flutter-Layouts
-
-## Goal
-The goal of this skill is to architect and implement robust, responsive, and adaptive Flutter layouts using widget composition and constraint-based sizing.
+# Building-Flutter-Layouts
 
 ## When to Use
-*   The system needs to build new UI screens or components in a Flutter application.
-*   The system must refactor existing UIs to be responsive across mobile, tablet, and desktop platforms.
-*   The system encounters layout overflow errors or unbounded constraint exceptions (e.g., `BoxConstraints forces an infinite width`).
+* The agent needs to construct user interfaces in Flutter.
+* The agent is tasked with arranging, aligning, or constraining visible widgets.
+* The agent must implement responsive or adaptive designs for multiple screen sizes (e.g., mobile, tablet, desktop).
+* The agent encounters layout overflow errors (yellow and black striped patterns) or unbounded constraint exceptions.
 
 ## Instructions
-Follow this "Plan -> Execute" workflow to build Flutter layouts:
 
-1.  **Plan the Layout:** Break down the UI into basic elements. Identify rows, columns, grids, overlapping elements, and areas requiring alignment, padding, or borders.
-2.  **Select Layout Widgets:** Choose the appropriate structural widgets based on the layout diagram (see Decision Logic below).
-3.  **Compose Visible Widgets:** Create the visible elements (Text, Image, Icon) and nest them inside the layout widgets.
-4.  **Apply Constraints:** Manage sizing and positioning by applying constraints. Remember that in Flutter, almost everything is a widget, including layout models.
+**Interaction Rule:** Evaluate the current project context for UI mockups, target platforms, and specific layout requirements. If missing, ask the user for clarification before proceeding with implementation.
 
-**Interaction Rule:** Evaluate the current project context for target screen sizes, orientation requirements, and design mockups. If missing, ask the user for clarification before proceeding with implementation.
+1. **Plan the Layout:** Diagram the UI visually before coding. Break the design down into basic elements: identify rows, columns, grids, overlapping elements, and areas requiring padding or alignment.
+2. **Select the Layout Widget:** Choose the appropriate structural widget (e.g., `Scaffold`, `Row`, `Column`, `Stack`) based on the diagram.
+3. **Create Visible Widgets:** Instantiate the visible elements such as `Text`, `Icon`, or `Image`.
+4. **Compose the Tree:** Add the visible widgets as children to the layout widgets. Nest rows and columns as needed to achieve the desired structure.
+5. **Apply Constraints:** Use `Expanded`, `Flexible`, or `SizedBox` to control how children occupy available space and to prevent overflow errors.
+6. **Implement Responsiveness:** Wrap top-level layout components in a `LayoutBuilder` to adapt the UI based on available screen width.
 
 ## Decision Logic
 
-Use the following logic tree to select the correct layout widget:
+Use the following decision tree to select the correct layout widget:
 
-*   **Does the content need to scroll?**
-    *   Yes, it's a linear list -> Use `ListView`.
-    *   Yes, it's a 2D array -> Use `GridView`.
-    *   Yes, it's a custom layout -> Wrap in `SingleChildScrollView`.
-    *   No -> Proceed below.
-*   **How are the items arranged?**
-    *   Horizontally -> Use `Row`.
-    *   Vertically -> Use `Column`.
-    *   Overlapping (Z-axis) -> Use `Stack`.
-*   **Does a single widget need styling or spacing?**
-    *   Needs padding, margin, border, and background color -> Use `Container`.
-    *   Needs *only* padding -> Use `Padding` (more performant).
-    *   Needs *only* specific dimensions -> Use `SizedBox`.
-*   **Does the layout need to adapt to screen size?**
-    *   Yes -> Use `LayoutBuilder` to read constraints and branch logic.
+* **Do you need to arrange widgets linearly?**
+  * Yes, horizontally -> Use `Row`.
+  * Yes, vertically -> Use `Column`.
+  * *Sub-decision:* Will the content exceed the screen size?
+    * Yes -> Use `ListView` (or wrap the `Column`/`Row` in a `SingleChildScrollView`).
+    * No -> Stick with `Row` or `Column`.
+* **Do you need to overlap widgets (e.g., text over an image)?**
+  * Yes -> Use `Stack`.
+* **Do you need to arrange widgets in a 2D array?**
+  * Yes -> Use `GridView`.
+* **Do you need to add padding, margins, borders, or background color to a single widget?**
+  * Yes -> Use `Container` (or `Padding` if only padding is needed).
+* **Do you need the layout to change based on screen size (e.g., mobile vs. tablet)?**
+  * Yes -> Use `LayoutBuilder` to read constraints and branch the UI logic.
+* **Do you need a child to fill the remaining space in a `Row` or `Column`?**
+  * Yes -> Wrap the child in an `Expanded` widget.
 
 ## Best Practices
 
-*   **Apply the Core Constraint Rule:** Memorize and strictly adhere to: *Constraints go down. Sizes go up. Parent sets position.* A widget cannot choose its own size or placement; it must negotiate with its parent.
-*   **Prevent Unbounded Constraints:** Never nest a scrollable widget (like `ListView`) inside an unconstrained flex box (`Column` or `Row`) without wrapping it in an `Expanded` or `Flexible` widget.
-*   **Handle Flex Overflows:** Use `Expanded` or `Flexible` inside `Row` and `Column` to prevent overflow and distribute available space proportionally.
-*   **Implement Adaptive Breakpoints:** Use `LayoutBuilder` to create responsive designs that fit the UI into the available space and adaptive designs that make the UI usable (e.g., switching from a bottom navigation bar to a side navigation rail on wide screens).
-*   **Flatten Widget Trees:** Extract heavily nested layout code into separate, smaller `StatelessWidget` classes. This improves readability and minimizes the render tree rebuild scope.
+* **Apply the Core Layout Rule:** Always remember: *Constraints go down. Sizes go up. Parent sets position.* A widget gets constraints from its parent, asks its children what size they want to be, positions them, and then tells its parent its own size.
+* **Treat Everything as a Widget:** Remember that in Flutter, almost everything is a widget, including invisible layout models (like `Center`, `Align`, `Padding`).
+* **Prevent Unbounded Constraints:** Never place a scrollable widget (like `ListView`) directly inside an unconstrained flex box (like `Column` or `Row`). Always wrap the scrollable widget in an `Expanded` or `Flexible` widget to provide bounded constraints.
+* **Handle Overflows:** If a `Row` or `Column` overflows its bounds (showing yellow/black stripes), wrap the offending children in `Expanded` or `Flexible` widgets to constrain them to the available space.
+* **Modularize the UI:** Extract heavily nested layout code into separate, smaller `StatelessWidget` classes or builder methods to improve readability and performance.
+* **Use SafeArea:** Always wrap top-level screen content in a `SafeArea` widget to prevent the UI from overlapping with system interfaces like notches, status bars, and home indicators.
+* **Pack Widgets Tightly:** Set `mainAxisSize: MainAxisSize.min` on `Row` or `Column` when you want the layout to shrink-wrap its children rather than expanding to fill the main axis.
 
 ## Examples
 
-### Gold Standard: Adaptive Layout with LayoutBuilder
+### Adaptive Layout with Constraints and Flex Widgets
 
-This example demonstrates how to build a responsive layout that adapts between a mobile view (stacked) and a tablet/desktop view (side-by-side) using `LayoutBuilder`.
+This example demonstrates an adaptive layout that switches between a single-column view for mobile and a side-by-side view for larger screens, applying proper constraints and flex rules.
 
 ```dart
 import 'package:flutter/material.dart';
 
-const double _kTabletBreakpoint = 600.0;
+const double kLargeScreenMinWidth = 600.0;
 
-class AdaptiveContactLayout extends StatefulWidget {
-  const AdaptiveContactLayout({super.key});
+class AdaptiveDashboard extends StatefulWidget {
+  const AdaptiveDashboard({super.key});
 
   @override
-  State<AdaptiveContactLayout> createState() => _AdaptiveContactLayoutState();
+  State<AdaptiveDashboard> createState() => _AdaptiveDashboardState();
 }
 
-class _AdaptiveContactLayoutState extends State<AdaptiveContactLayout> {
-  int _selectedContactId = 0;
+class _AdaptiveDashboardState extends State<AdaptiveDashboard> {
+  int _selectedIndex = 0;
 
-  void _onContactSelected(int id) {
+  void _onItemSelected(int index) {
     setState(() {
-      _selectedContactId = id;
+      _selectedIndex = index;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Contacts')),
-      body: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          final bool isLargeScreen = constraints.maxWidth > _kTabletBreakpoint;
+      appBar: AppBar(
+        title: const Text('Adaptive Dashboard'),
+      ),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final bool isLargeScreen = constraints.maxWidth > kLargeScreenMinWidth;
 
-          if (isLargeScreen) {
-            return _buildLargeScreenLayout();
-          } else {
-            return _buildSmallScreenLayout();
-          }
-        },
+            if (isLargeScreen) {
+              return _buildLargeScreenLayout();
+            } else {
+              return _buildSmallScreenLayout();
+            }
+          },
+        ),
       ),
     );
   }
 
   Widget _buildLargeScreenLayout() {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
+        // Fixed-width sidebar
         SizedBox(
-          width: 320.0,
-          child: ContactList(onSelected: _onContactSelected),
+          width: 250.0,
+          child: _SidebarList(
+            selectedIndex: _selectedIndex,
+            onItemSelected: _onItemSelected,
+          ),
         ),
-        const VerticalDivider(width: 1.0, thickness: 1.0),
+        // Vertical divider
+        Container(
+          width: 1.0,
+          color: Colors.grey[300],
+        ),
+        // Expanded detail view takes remaining space
         Expanded(
-          child: ContactDetail(contactId: _selectedContactId),
+          child: _DetailView(selectedIndex: _selectedIndex),
         ),
       ],
     );
   }
 
   Widget _buildSmallScreenLayout() {
-    return ContactList(onSelected: _onContactSelected);
+    // Uses a Column with Expanded to prevent unbounded height issues
+    return Column(
+      children: <Widget>[
+        Expanded(
+          child: _SidebarList(
+            selectedIndex: _selectedIndex,
+            onItemSelected: _onItemSelected,
+          ),
+        ),
+      ],
+    );
   }
 }
 
-// Mock Widgets for demonstration
-class ContactList extends StatelessWidget {
-  final ValueChanged<int> onSelected;
-  const ContactList({super.key, required this.onSelected});
+class _SidebarList extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onItemSelected;
+
+  const _SidebarList({
+    required this.selectedIndex,
+    required this.onItemSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
       itemCount: 10,
-      itemBuilder: (context, index) {
+      itemBuilder: (BuildContext context, int index) {
         return ListTile(
-          title: Text('Contact $index'),
-          onTap: () => onSelected(index),
+          selected: index == selectedIndex,
+          leading: const Icon(Icons.dashboard),
+          title: Text('Item $index'),
+          onTap: () => onItemSelected(index),
         );
       },
     );
   }
 }
 
-class ContactDetail extends StatelessWidget {
-  final int contactId;
-  const ContactDetail({super.key, required this.contactId});
+class _DetailView extends StatelessWidget {
+  final int selectedIndex;
+
+  const _DetailView({required this.selectedIndex});
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text('Details for Contact $_kContactIdPrefix$contactId'),
-    );
-  }
-}
-
-const String _kContactIdPrefix = '#';
-```
-
-### Gold Standard: Safe Flex Constraints
-
-This example demonstrates how to safely constrain a `ListView` inside a `Column` to prevent the "unbounded height" error.
-
-```dart
-import 'package:flutter/material.dart';
-
-class DashboardView extends StatelessWidget {
-  const DashboardView({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            'Dashboard',
-            style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold),
+      child: Column(
+        mainAxisSize: MainAxisSize.min, // Packs children tightly
+        children: <Widget>[
+          Icon(
+            Icons.info_outline,
+            size: 64.0,
+            color: Theme.of(context).primaryColor,
           ),
-        ),
-        // Wrap ListView in Expanded to provide bounded height constraints
-        Expanded(
-          child: ListView.builder(
-            itemCount: 20,
-            itemBuilder: (BuildContext context, int index) {
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: ListTile(
-                  leading: const Icon(Icons.data_usage),
-                  title: Text('Data Item $index'),
-                ),
-              );
-            },
+          const SizedBox(height: 16.0),
+          Text(
+            'Details for Item $selectedIndex',
+            style: Theme.of(context).textTheme.headlineSmall,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

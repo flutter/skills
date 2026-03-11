@@ -3,88 +3,99 @@ name: "flutter-environment-setup-windows"
 description: "Set up a Windows environment for Flutter development"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 11 Mar 2026 17:36:39 GMT"
+  last_modified: "Wed, 11 Mar 2026 18:02:46 GMT"
 
 ---
-# Setting-Up-Flutter-Windows
-
-## Goal
-The agent configures a complete Windows development environment for Flutter, handling SDK installation, PATH configuration, Visual Studio toolchain setup, and platform-specific deployment packaging.
+# Setting-Up-Flutter-On-Windows
 
 ## When to Use
-* The user requests initializing or configuring a Flutter environment on a Windows operating system.
-* The system needs to compile, build, or package a Flutter Windows desktop application.
-* The user encounters toolchain errors related to Visual Studio, Android emulators, or missing C++ redistributables on Windows.
+* The agent needs to configure a Windows environment for Flutter application development.
+* The user requests building, debugging, or deploying a Flutter app specifically for Windows Desktop or Android devices connected to a Windows host.
+* The agent must package a compiled Windows desktop Flutter application into a distributable zip file or generate local certificates for MSIX deployment.
 
 ## Decision Logic
 Evaluate the target deployment platform to determine the required toolchain:
 * **If targeting Windows Desktop:** Install Visual Studio (not VS Code) with the "Desktop development with C++" workload.
-* **If targeting Android on Windows:** Install Android Studio. For emulators, enable hardware acceleration. For physical devices, enable USB debugging and install OEM USB drivers.
-* **If targeting Web:** No additional local toolchain is required beyond a modern browser.
-* **If packaging for Windows distribution:** 
-  * *Option A (Zip):* Bundle the `.exe`, `.dll` files, `data` directory, and Visual C++ redistributables.
-  * *Option B (MSIX):* Generate a `.pfx` certificate using OpenSSL and sign the package.
+* **If targeting Android on Windows:** Install Android Studio, configure Android SDK/Command-line Tools, enable hardware acceleration for emulators, and install OEM USB drivers for physical devices.
+* **If targeting Web:** No additional local compilation toolchain is required beyond a modern browser.
+* **If distributing a Windows Desktop app locally:** Generate a `.pfx` certificate using OpenSSL and install it to the local Certificate store.
+* **If distributing a Windows Desktop app via Zip:** Bundle the generated `.exe`, `.dll` files, `data/` directory, and Visual C++ redistributables.
 
 ## Instructions
 
-**Interaction Rule:** Evaluate the current project context for the intended target platforms (Windows Desktop, Android, Web). If the target platform is missing or ambiguous, ask the user for clarification before proceeding with toolchain installation.
+**Interaction Rule:** Evaluate the current project context to determine the target platforms (Windows, Android, Web) and distribution method. If the target platform or distribution method is missing or ambiguous, ask the user for clarification before proceeding with the environment setup.
 
-1. **Install the SDK:** Download the Flutter SDK and extract it to a user-writable directory (e.g., `C:/src/flutter`). Do not use protected directories like `C:/Program Files/`.
-2. **Configure PATH:** Append the absolute path of the Flutter `bin` directory to the Windows `Path` environment variable.
-3. **Install Tooling:** Install Visual Studio and select the `Desktop development with C++` workload.
-4. **Configure Platforms:** Enable or disable specific target platforms using the `flutter config` command.
-5. **Restart Environment:** Restart all active terminal sessions and IDEs to apply PATH changes and detect new devices.
-6. **Validate Setup:** Execute `flutter doctor -v` to verify the toolchain and resolve any missing dependencies.
+**Plan -> Execute Workflow:**
+
+1. **Install and Configure the Flutter SDK**
+   * Download the latest stable Flutter SDK.
+   * Extract the SDK to a directory requiring no elevated privileges (e.g., `C:/src/flutter`).
+   * Add the `flutter/bin` directory to the system's `PATH` environment variable.
+   * Run `flutter doctor` to verify the base installation.
+
+2. **Configure Development Tooling**
+   * Install Visual Studio with the `Desktop development with C++` workload to enable Windows desktop compilation.
+   * Install a primary IDE (VS Code or Android Studio) and equip it with the Flutter and Dart extensions.
+   * Restart the IDE after enabling new platform support to ensure device detection.
+
+3. **Configure Target Platforms**
+   * **Android:** Enable Developer options and USB debugging on physical devices. For emulators, select a "Hardware" graphics acceleration option.
+   * **Windows:** Ensure the Visual Studio C++ toolchain is detected by running `flutter doctor -v`.
+   * **Disable Unused Platforms:** Suppress warnings for platforms not in use by running `flutter config --no-enable-<platform>-desktop` (e.g., `flutter config --no-enable-linux-desktop`).
+
+4. **Package and Distribute (Windows Desktop)**
+   * Compile the application using `flutter build windows`.
+   * Locate the executable and dependencies in `build/windows/runner/<build_mode>/`.
+   * For zip distribution, package the `.exe`, all adjacent `.dll` files, the `data/` directory, and the required Visual C++ redistributables.
+   * For local MSIX testing, generate and trust a `.pfx` certificate using OpenSSL.
 
 ## Best Practices
-* Install the Flutter SDK in a directory that does not require elevated Administrator privileges.
-* Always bundle `msvcp140.dll`, `vcruntime140.dll`, and `vcruntime140_1.dll` alongside the executable when distributing a standalone Windows `.zip` build.
-* Disable unused platforms to suppress unnecessary `flutter doctor` warnings (e.g., `flutter config --no-enable-linux-desktop`).
-* Install self-signed `.pfx` certificates in the local machine's "Trusted Root Certification Authorities" store before attempting to install a custom MSIX app.
-* Use forward slashes (`/`) for internal path references in scripts to maintain cross-compatibility where possible, or strictly use standard Windows environment variables (`%USERPROFILE%`) in batch contexts.
+* Always use forward slashes (`/`) for file paths in documentation and cross-platform scripts to maintain consistency.
+* Do not install the Flutter SDK in protected system directories (e.g., `C:/Program Files/`) to avoid permission errors during execution and updates.
+* Bundle `msvcp140.dll`, `vcruntime140.dll`, and `vcruntime140_1.dll` directly in the application zip file to ensure end-users without the Visual C++ redistributable can run the application.
+* Install generated `.pfx` certificates into the "Trusted Root Certification Authorities" store on the local machine prior to installing a locally signed MSIX package.
 
 ## Examples
 
-### Updating Windows PATH via PowerShell
-Use PowerShell to append the Flutter `bin` directory to the user's PATH variable deterministically.
-
+### Updating the PATH Environment Variable (PowerShell)
 ```powershell
-$FLUTTER_BIN = "C:/src/flutter/bin"
-$USER_PATH = [Environment]::GetEnvironmentVariable("Path", "User")
+# Define the absolute path to the Flutter bin directory
+$FLUTTER_BIN_PATH = "C:/src/flutter/bin"
 
-if ($USER_PATH -notmatch [regex]::Escape($FLUTTER_BIN)) {
-    [Environment]::SetEnvironmentVariable("Path", "$USER_PATH;$FLUTTER_BIN", "User")
-    Write-Host "Flutter bin directory added to User PATH."
-}
+# Append Flutter to the user's PATH variable
+$USER_PATH = [Environment]::GetEnvironmentVariable("Path", "User")
+[Environment]::SetEnvironmentVariable("Path", "$USER_PATH;$FLUTTER_BIN_PATH", "User")
 ```
 
-### Generating a Self-Signed Certificate with OpenSSL
-Execute these commands to generate a `.pfx` certificate for MSIX packaging.
-
+### Generating a Local Certificate for Windows App Signing
 ```bash
-# 1. Generate a private key
-openssl genrsa -out mykeyname.key 2048
+# Set OpenSSL path (adjust based on actual installation directory)
+export OPENSSL_BIN="C:/Program Files/OpenSSL-Win64/bin"
+export PATH="$OPENSSL_BIN:$PATH"
 
-# 2. Generate a certificate signing request (CSR)
-openssl req -new -key mykeyname.key -out mycsrname.csr
+# 1. Generate a private key
+openssl genrsa -out my_app_key.key 2048
+
+# 2. Generate a Certificate Signing Request (CSR)
+openssl req -new -key my_app_key.key -out my_app_csr.csr
 
 # 3. Generate the signed certificate (CRT)
-openssl x509 -in mycsrname.csr -out mycrtname.crt -req -signkey mykeyname.key -days 10000
+openssl x509 -in my_app_csr.csr -out my_app_cert.crt -req -signkey my_app_key.key -days 10000
 
-# 4. Generate the .pfx file
-openssl pkcs12 -export -out CERTIFICATE.pfx -inkey mykeyname.key -in mycrtname.crt
+# 4. Generate the .pfx file for Windows installation
+openssl pkcs12 -export -out my_app_certificate.pfx -inkey my_app_key.key -in my_app_cert.crt
 ```
 
-### Windows Standalone Zip Packaging Structure
-When assembling a Windows build for distribution without an installer, structure the release folder exactly as follows before zipping:
+### Structuring a Windows Zip Distribution
+When preparing a zip file for a Windows release, structure the archive exactly as follows to ensure all dependencies are resolved at runtime:
 
 ```text
 Release/
+├── my_flutter_app.exe
 ├── flutter_windows.dll
 ├── msvcp140.dll
 ├── vcruntime140.dll
 ├── vcruntime140_1.dll
-├── my_app.exe
 └── data/
     ├── app.so
     └── icudtl.dat

@@ -3,78 +3,85 @@ name: "flutter-databases"
 description: "Work with databases in a Flutter app"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 11 Mar 2026 17:43:56 GMT"
+  last_modified: "Wed, 11 Mar 2026 18:10:03 GMT"
 
 ---
 # Architecting-Flutter-Data-Layers
 
 ## When to Use
-* The agent needs to implement a data layer using the MVVM architecture in a Flutter application.
-* The application requires local data persistence using SQLite (`sqflite`).
-* The application needs to cache data locally using `shared_preferences`, file systems, or on-device databases.
-* The agent must separate business logic from UI by implementing Repositories and Services.
+*   Designing or implementing the data layer (Model in MVVM) for a Flutter application.
+*   Establishing a single source of truth for application data.
+*   Separating business logic into Repositories and Services.
+*   Implementing local data persistence using SQLite (`sqflite`).
+*   Selecting and implementing a caching strategy (e.g., `shared_preferences`, file system, or on-device databases).
+*   Building offline-first applications that require data synchronization between local and remote sources.
 
 ## Instructions
 
-**Interaction Rule:** Evaluate the current project context for [existing data models, required caching strategy, offline-first requirements]. If missing, ask the user for clarification before proceeding with implementation.
+**Interaction Rule:** Evaluate the current project context for existing data layer patterns, state management choices, and persistence requirements. If the required persistence strategy or API structure is missing or ambiguous, ask the user for clarification before proceeding with implementation.
 
-1. **Plan:** 
-   * Identify the data sources (remote API, local database, key-value store).
-   * Determine the appropriate caching strategy based on data size and type using the Decision Logic below.
-   * Define the raw data models (API/DB models) and the refined domain models required by the UI.
-2. **Execute:**
-   * Implement stateless Service classes to wrap external APIs or database interactions.
-   * Implement Repository classes to act as the single source of truth for application data.
-   * Inject Services into Repositories as private members.
-   * Transform raw data models from Services into domain models within the Repository.
-   * Expose data to the UI layer exclusively through the Repository.
+1.  **Plan the Data Layer Architecture:**
+    *   Identify the domain models required by the UI.
+    *   Identify the external data sources (REST APIs, device sensors) and define corresponding Service classes.
+    *   Identify local storage requirements and select the appropriate persistence strategy (see Decision Logic below).
+    *   Map out the Repositories needed to orchestrate between Services and local storage, ensuring they output clean Domain Models.
 
-## Decision Logic: Caching Strategy Selection
-Evaluate the data requirements to select the optimal caching strategy:
+2.  **Decision Logic: Selecting a Caching/Persistence Strategy:**
+    *   *Condition:* Is the data small, simple key-value pairs (e.g., user preferences, theme settings)?
+        *   *Action:* Use `shared_preferences`.
+    *   *Condition:* Is the data a large, structured, relational dataset requiring fast inserts, updates, and queries?
+        *   *Action:* Use an on-device relational database like `sqflite` (with the `path` package) or `drift`.
+    *   *Condition:* Is the data a large dataset but non-relational?
+        *   *Action:* Use a NoSQL local database like `hive_ce` or `isar_community`.
+    *   *Condition:* Are you caching network images?
+        *   *Action:* Use the `cached_network_image` package to store images on the file system.
+    *   *Condition:* Are you caching raw files or blobs where `shared_preferences` is insufficient?
+        *   *Action:* Use the device's file system directly.
 
-* **Is the data small, simple key-value pairs (e.g., user preferences, theme settings)?**
-  * **Yes:** Use `shared_preferences`.
-* **Is the data a large, structured dataset requiring fast inserts, updates, and complex queries?**
-  * **Yes:** Use On-device databases (Relational: `sqflite`, `drift` | Non-relational: `hive_ce`, `isar_community`).
-* **Is the data composed of raw files or blobs where `shared_preferences` is insufficient?**
-  * **Yes:** Use the device's File system.
-* **Is the data primarily network images?**
-  * **Yes:** Use the `cached_network_image` package to store images on the file system.
-* **Is the data strictly lightweight API responses?**
-  * **Yes:** Implement a Remote Caching system specifically for API responses.
+3.  **Execute Service Implementation:**
+    *   Create stateless Service classes to wrap external APIs or database plugins.
+    *   Ensure Services return raw data models (API models or Data Transfer Objects).
+
+4.  **Execute Repository Implementation:**
+    *   Create Repository classes for each distinct data type.
+    *   Inject required Services into the Repository as *private* members.
+    *   Implement data fetching, caching, and synchronization logic within the Repository.
+    *   Transform raw API/Database models into Domain Models before returning them to the UI layer.
 
 ## Best Practices
-* Enforce the data layer as the *only* place where application data is updated.
-* Make Service instances private members of Repositories to prevent the UI layer from bypassing the repository and calling a service directly.
-* Transform raw API/DB models into domain models within the Repository. Domain models must contain only the information needed by the rest of the app.
-* Use an `id` as the primary key for database tables to optimize query and update performance.
-* Ensure the database connection is open before executing any read/write requests in the Repository.
-* Handle exceptions within the Repository and return standardized wrapper objects (e.g., `Result.ok`, `Result.error`) to the UI layer to encapsulate success and failure states.
+
+*   **Enforce the Single Source of Truth:** Never mutate application data in the UI layer. All data mutations must occur within the Repository.
+*   **Keep Services Stateless:** Do not store application state in Service classes. Their only job is to wrap external APIs or database transactions.
+*   **Hide Services from the UI:** Always make Service instances private members of the Repository (e.g., `final ApiClient _apiClient;`). The UI layer must never bypass the Repository to call a Service directly.
+*   **Separate API Models from Domain Models:** Use API models for raw JSON serialization. Transform these into Domain Models in the Repository so the UI only receives the data it actually needs.
+*   **Use Result Wrappers for Error Handling:** Wrap asynchronous Repository returns in a `Result` type (e.g., `Future<Result<DomainModel>>`) to safely pass data and errors to the view model without relying on `try/catch` blocks in the UI layer.
+*   **Optimize Database Queries:** Always use an `id` as the primary key for SQLite tables to improve query and update times. Ensure the database is open before executing requests.
 
 ## Examples
 
-### Gold Standard: Database Service Implementation
-Create a dedicated service for database operations using `sqflite`.
+### Example 1: SQLite Database Service
+Implement a dedicated service to handle SQLite operations using `sqflite`.
 
-**File:** `lib/data/services/database_service.dart`
 ```dart
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseService {
-  Database? _database;
+  static const String _dbName = 'app_database.db';
   static const String _tableName = 'todos';
+  
+  Database? _database;
 
   Future<void> open() async {
     if (_database != null && _database!.isOpen) return;
     
     final dbPath = await getDatabasesPath();
     _database = await openDatabase(
-      join(dbPath, 'app_database.db'),
+      join(dbPath, _dbName),
       version: 1,
       onCreate: (db, version) {
         return db.execute(
-          'CREATE TABLE $_tableName(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, is_completed INTEGER)',
+          'CREATE TABLE $_tableName(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, isCompleted INTEGER)',
         );
       },
     );
@@ -82,49 +89,57 @@ class DatabaseService {
 
   bool isOpen() => _database != null && _database!.isOpen;
 
+  Future<List<Map<String, dynamic>>> getAllTodos() async {
+    return await _database!.query(_tableName);
+  }
+
   Future<int> insertTodo(Map<String, dynamic> todoMap) async {
     return await _database!.insert(
-      _tableName,
+      _tableName, 
       todoMap,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
-  Future<List<Map<String, dynamic>>> fetchAllTodos() async {
-    return await _database!.query(_tableName);
+  Future<int> deleteTodo(int id) async {
+    return await _database!.delete(
+      _tableName,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 }
 ```
 
-### Gold Standard: Repository Implementation
-Create a repository that acts as the single source of truth, utilizing the private database service and transforming raw maps into domain models.
+### Example 2: Repository with Offline-First Logic
+Implement a Repository that uses the `DatabaseService` as the source of truth, transforming raw maps into Domain Models.
 
-**File:** `lib/data/repositories/todo_repository.dart`
 ```dart
-import '../services/database_service.dart';
-import '../../domain/models/todo.dart';
-import '../../domain/models/result.dart';
+import 'package:my_app/data/services/database_service.dart';
+import 'package:my_app/domain/models/todo.dart';
+import 'package:my_app/domain/utils/result.dart'; // Assume a custom Result<T> class exists
 
 class TodoRepository {
   TodoRepository({
     required DatabaseService databaseService,
-  }) : _databaseService = databaseService;
+  }) : _dbService = databaseService;
 
-  final DatabaseService _databaseService;
+  final DatabaseService _dbService;
 
+  /// Fetches Todos from the local database, ensuring it is open first.
   Future<Result<List<Todo>>> fetchTodos() async {
     try {
-      if (!_databaseService.isOpen()) {
-        await _databaseService.open();
+      if (!_dbService.isOpen()) {
+        await _dbService.open();
       }
       
-      final rawData = await _databaseService.fetchAllTodos();
+      final rawData = await _dbService.getAllTodos();
       
       // Transform raw database maps into Domain Models
       final todos = rawData.map((map) => Todo(
         id: map['id'] as int,
         title: map['title'] as String,
-        isCompleted: (map['is_completed'] as int) == 1,
+        isCompleted: (map['isCompleted'] as int) == 1,
       )).toList();
 
       return Result.ok(todos);
@@ -133,21 +148,25 @@ class TodoRepository {
     }
   }
 
+  /// Creates a new Todo in the local database.
   Future<Result<Todo>> createTodo(String title) async {
     try {
-      if (!_databaseService.isOpen()) {
-        await _databaseService.open();
+      if (!_dbService.isOpen()) {
+        await _dbService.open();
       }
 
-      final rawTodo = {
+      final todoMap = {
         'title': title,
-        'is_completed': 0,
+        'isCompleted': 0,
       };
 
-      final id = await _databaseService.insertTodo(rawTodo);
+      final id = await _dbService.insertTodo(todoMap);
       
-      // Return the newly created Domain Model
-      return Result.ok(Todo(id: id, title: title, isCompleted: false));
+      return Result.ok(Todo(
+        id: id,
+        title: title,
+        isCompleted: false,
+      ));
     } on Exception catch (e) {
       return Result.error(e);
     }
