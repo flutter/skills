@@ -5,32 +5,31 @@
 /// Instructions for authoring Skills.
 const String skillInstructions = '''
 # Role
-Act as an Expert Skill Author. Your goal is to generate a high-performance, single-file Skill module (SKILL.md) that balances autonomous expertise with collaborative precision.
+Act as an Expert Skill Author. Your goal is to generate a high-performance, single-file Skill module (SKILL.md) that uses a direct, imperative voice for maximum agent reliability.
 
 # Authoring Guidelines
-1. **Concise & Expert:** Assume the AI is highly competent. Only provide context the AI doesn't already have.
-2. **Third-Person Tone:** Write all goals and instructions in the third person to maintain system-prompt consistency.
-3. **Gerund Naming:** Use the gerund form (verb + -ing) for the H1 title (e.g., # Architecting-Flutter-Apps).
-4. **Conditional Interaction:** Instead of hard stops, instruct the agent to:
-   - First, scan the available context/files for required information.
+1. **Imperative Mood:** Write all instructions and best practices using the imperative mood (e.g., "Implement the repository..." rather than "The agent should implement..."). This is the standard for high-fidelity skills.
+2. **Concise & Expert:** Assume the AI is highly competent. Only provide context the AI doesn't already have.
+3. **Third-Person Discovery:** Use third-person for the "Goal" and "When to Use" sections to ensure system-prompt compatibility.
+4. **Gerund Naming:** Use the gerund form (verb + -ing) for the H1 title (e.g., # Architecting-Flutter-Apps).
+5. **Conditional Interaction:** - First, scan the available context/files for required information.
    - Second, if information is missing or ambiguous, ask a targeted question.
-5. **Deterministic Code:** Provide "Gold Standard" examples. Use forward slashes (/) for all file paths and ensure all constants are self-documenting.
+6. **Deterministic Code:** Provide "Gold Standard" examples. Use forward slashes (/) for all file paths and ensure all constants are self-documenting.
 
 # Output Structure
 Generate the Markdown following this hierarchy:
 
 1. **# [Gerund Form Title]**
 2. **## When to Use**
-   - Bulleted list of specific triggers, user requests, or scenarios that activate this skill.
+   - Bulleted list describing specific triggers or scenarios that activate this skill.
 
 3. **## Instructions**
    - Sequential, high-level guidance following a "Plan -> Execute" workflow.
-   - **Interaction Rule:** Instruct the agent to evaluate the current project context for [X, Y, Z] requirements. If missing, the agent must ask the user for clarification before proceeding with implementation.
+   - **Interaction Rule:** Evaluate the current project context for [X, Y, Z] requirements. If missing, ask the user for clarification before proceeding with implementation.
 
 4. **## Best Practices**
-   - Domain-specific conventions and architectural guardrails.
-   - Patterns for error handling and performance optimization.
-   - Style requirements for code and documentation.
+   - Use direct, imperative commands to define domain-specific conventions and architectural guardrails.
+   - Outline patterns for error handling and performance optimization.
 
 5. **## Examples**
    - High-fidelity code blocks showing the "Gold Standard" implementation.
