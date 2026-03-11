@@ -1,169 +1,201 @@
 ---
 name: "flutter-architecture"
-description: "Use the Flutter team's recommended app architecture"
+description: "Build an app using the Flutter team's recommended app architecture"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Thu, 26 Feb 2026 23:42:30 GMT"
+  last_modified: "Wed, 11 Mar 2026 17:30:56 GMT"
 
 ---
-# Flutter App Architecture Implementation
+# Architecting-Flutter-Apps
 
 ## Goal
-Implements a scalable, maintainable Flutter application architecture using the MVVM pattern, unidirectional data flow, and strict separation of concerns across UI, Domain, and Data layers. Assumes a standard Flutter environment utilizing `provider` for dependency injection and `ListenableBuilder` for reactive UI updates.
+The agent structures, organizes, and designs Flutter applications using a layered architecture (MVVM) to ensure maintainability, scalability, and testability as project requirements grow.
 
-## Decision Logic
-Before implementing a feature, evaluate the architectural requirements using the following logic:
-1. **Data Source:** 
-   * If interacting with an external API -> Create a Remote Service.
-   * If interacting with local storage (SQL/Key-Value) -> Create a Local Service.
-2. **Business Logic Complexity:**
-   * If the feature requires merging data from multiple repositories or contains highly complex, reusable logic -> Implement a **Domain Layer** (UseCases).
-   * If the feature is standard CRUD or simple data presentation -> Skip the Domain Layer; the ViewModel communicates directly with the Repository.
+## When to Use
+* The user requests a new Flutter project setup or feature implementation.
+* The user asks to refactor an existing Flutter application to improve scalability or maintainability.
+* The agent needs to integrate external APIs or databases into a Flutter UI, requiring clear separation of concerns.
 
 ## Instructions
+**Interaction Rule:** Evaluate the current project context for [State Management Preference, API/Data Sources, Feature Scope] requirements. If missing, ask the user for clarification before proceeding with implementation.
 
-1. **Analyze Feature Requirements**
-   Evaluate the requested feature to determine the necessary data models, services, and UI state. 
-   **STOP AND ASK THE USER:** "Please provide the specific data models, API endpoints, or local storage requirements for this feature, and confirm if complex business logic requires a dedicated Domain (UseCase) layer."
+1. **Plan:** 
+   * Identify the feature scope and required data sources.
+   * Define the necessary Services (external APIs), Repositories (single source of truth), ViewModels (state management), and Views (UI).
+2. **Execute Data Layer:** 
+   * Implement stateless Service classes to wrap external APIs.
+   * Implement Repository classes to consume Services, handle caching/retry logic, and transform raw data into domain models.
+3. **Execute Logic Layer:** 
+   * Implement ViewModels to manage UI state, process user events, and interact with Repositories.
+4. **Execute UI Layer:** 
+   * Implement lean, reusable Widgets that observe ViewModels and render the UI as a function of state.
 
-2. **Implement the Data Layer: Services**
-   Create a stateless service class to wrap the external API or local storage. This class must not contain business logic or state.
-   ```dart
-   class SharedPreferencesService {
-     static const String _kDarkMode = 'darkMode';
+## Decision Logic
+* **Does the feature require external data (HTTP, local database, platform plugins)?**
+  * **Yes:** Create a `Service` class to wrap the API. Inject the `Service` into a `Repository`.
+  * **No:** Manage the local state directly within the `Repository` or `ViewModel`.
+* **Does the feature have highly complex business logic or combine data from multiple repositories?**
+  * **Yes:** Implement an optional Domain Layer (Use Cases / Interactors) between the ViewModels and Repositories.
+  * **No:** Connect the `ViewModel` directly to the `Repository`.
 
-     Future<void> setDarkMode(bool value) async {
-       final prefs = await SharedPreferences.getInstance();
-       await prefs.setBool(_kDarkMode, value);
-     }
+## Best Practices
+* **Enforce Unidirectional Data Flow:** Ensure data flows strictly from Data -> Logic -> UI. Route user events strictly from UI -> Logic -> Data.
+* **Maintain a Single Source of Truth:** Update application data only within the Data layer (Repositories). Never mutate domain data directly within the UI layer.
+* **Keep Widgets Lean:** Restrict the UI layer to layout, animation, and simple routing logic. Delegate all business logic and data formatting to ViewModels.
+* **Isolate External Dependencies:** Wrap all HTTP calls, local storage, and platform plugins in stateless Service classes. Never call an API directly from a Widget or ViewModel.
+* **Organize by Feature:** Structure the `/lib` directory by feature (e.g., `/lib/features/authentication/`) containing its own `ui`, `logic`, and `data` subdirectories.
+* **Handle Errors Deterministically:** Catch exceptions in the Data layer and return formatted error states or `Result` objects to the Logic layer to prevent UI crashes.
 
-     Future<bool> isDarkMode() async {
-       final prefs = await SharedPreferences.getInstance();
-       return prefs.getBool(_kDarkMode) ?? false;
-     }
-   }
-   ```
+## Examples
 
-3. **Implement the Data Layer: Repositories**
-   Create a repository to act as the single source of truth. The repository consumes the service, handles errors using `Result` objects, and exposes domain models or streams.
-   ```dart
-   class ThemeRepository {
-     ThemeRepository(this._service);
+### Gold Standard: Feature-Based MVVM Architecture
 
-     final _darkModeController = StreamController<bool>.broadcast();
-     final SharedPreferencesService _service;
+**1. Service (External API Wrapper)**
+File: `/lib/features/users/data/services/user_api_service.dart`
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-     Future<Result<bool>> isDarkMode() async {
-       try {
-         final value = await _service.isDarkMode();
-         return Result.ok(value);
-       } on Exception catch (e) {
-         return Result.error(e);
-       }
-     }
+class UserApiService {
+  static const String _baseUrl = 'https://api.example.com/v1';
 
-     Future<Result<void>> setDarkMode(bool value) async {
-       try {
-         await _service.setDarkMode(value);
-         _darkModeController.add(value);
-         return Result.ok(null);
-       } on Exception catch (e) {
-         return Result.error(e);
-       }
-     }
+  Future<Map<String, dynamic>> fetchUserData(String userId) async {
+    final response = await http.get(Uri.parse('$_baseUrl/users/$userId'));
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to fetch user data');
+    }
+  }
+}
+```
 
-     Stream<bool> observeDarkMode() => _darkModeController.stream;
-   }
-   ```
+**2. Repository (Single Source of Truth & Data Transformation)**
+File: `/lib/features/users/data/repositories/user_repository.dart`
+```dart
+import '../services/user_api_service.dart';
+import '../models/user_domain_model.dart';
 
-4. **Implement the UI Layer: ViewModels**
-   Create a `ChangeNotifier` to manage UI state. Use the Command pattern to handle user interactions and asynchronous repository calls.
-   ```dart
-   class ThemeSwitchViewModel extends ChangeNotifier {
-     ThemeSwitchViewModel(this._themeRepository) {
-       load = Command0(_load)..execute();
-       toggle = Command0(_toggle);
-     }
+class UserRepository {
+  final UserApiService _apiService;
+  UserDomainModel? _cachedUser;
 
-     final ThemeRepository _themeRepository;
-     bool _isDarkMode = false;
+  UserRepository(this._apiService);
 
-     bool get isDarkMode => _isDarkMode;
+  Future<UserDomainModel> getUser(String userId, {bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedUser != null && _cachedUser!.id == userId) {
+      return _cachedUser!;
+    }
 
-     late final Command0<void> load;
-     late final Command0<void> toggle;
+    try {
+      final rawData = await _apiService.fetchUserData(userId);
+      _cachedUser = UserDomainModel.fromJson(rawData);
+      return _cachedUser!;
+    } catch (e) {
+      // Handle or rethrow domain-specific errors
+      throw Exception('Repository Error: Could not retrieve user.');
+    }
+  }
+}
+```
 
-     Future<Result<void>> _load() async {
-       final result = await _themeRepository.isDarkMode();
-       if (result is Ok<bool>) {
-         _isDarkMode = result.value;
-       }
-       notifyListeners();
-       return result;
-     }
+**3. ViewModel (Logic Layer)**
+File: `/lib/features/users/logic/user_view_model.dart`
+```dart
+import 'package:flutter/foundation.dart';
+import '../data/repositories/user_repository.dart';
+import '../data/models/user_domain_model.dart';
 
-     Future<Result<void>> _toggle() async {
-       _isDarkMode = !_isDarkMode;
-       final result = await _themeRepository.setDarkMode(_isDarkMode);
-       notifyListeners();
-       return result;
-     }
-   }
-   ```
+class UserViewModel extends ChangeNotifier {
+  final UserRepository _userRepository;
 
-5. **Implement the UI Layer: Views**
-   Create a `StatelessWidget` that observes the ViewModel using `ListenableBuilder`. The View must contain zero business logic.
-   ```dart
-   class ThemeSwitch extends StatelessWidget {
-     const ThemeSwitch({super.key, required this.viewmodel});
+  UserViewModel(this._userRepository);
 
-     final ThemeSwitchViewModel viewmodel;
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
 
-     @override
-     Widget build(BuildContext context) {
-       return Padding(
-         padding: const EdgeInsets.symmetric(horizontal: 16.0),
-         child: Row(
-           children: [
-             const Text('Dark Mode'),
-             ListenableBuilder(
-               listenable: viewmodel,
-               builder: (context, _) {
-                 return Switch(
-                   value: viewmodel.isDarkMode,
-                   onChanged: (_) {
-                     viewmodel.toggle.execute();
-                   },
-                 );
-               },
-             ),
-           ],
-         ),
-       );
-     }
-   }
-   ```
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
 
-6. **Wire Dependencies**
-   Inject the dependencies at the application or route level using constructor injection or a dependency injection framework like `provider`.
-   ```dart
-   void main() {
-     runApp(
-       MainApp(
-         themeRepository: ThemeRepository(SharedPreferencesService()),
-       ),
-     );
-   }
-   ```
+  UserDomainModel? _user;
+  UserDomainModel? get user => _user;
 
-7. **Validate and Fix**
-   Review the generated implementation against the constraints. Ensure that data flows strictly downwards (Repository -> ViewModel -> View) and events flow strictly upwards (View -> ViewModel -> Repository). If a View contains data mutation logic, extract it to the ViewModel. If a ViewModel directly accesses an API, extract it to a Service and route it through a Repository.
+  Future<void> loadUser(String userId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
-## Constraints
-* **No Logic in Views:** Views must only contain layout logic, simple conditional rendering based on ViewModel state, and routing.
-* **Unidirectional Data Flow:** Data must only flow from the Data Layer to the UI Layer. UI events must trigger ViewModel commands.
-* **Single Source of Truth:** Repositories are the only classes permitted to mutate application data.
-* **Service Isolation:** ViewModels must never interact directly with Services. They must communicate exclusively through Repositories (or UseCases).
-* **Stateless Services:** Service classes must not hold any state. Their sole responsibility is wrapping external APIs or local storage mechanisms.
-* **Immutable Models:** Domain models passed from Repositories to ViewModels must be immutable.
-* **Error Handling:** Repositories must catch exceptions from Services and return explicit `Result` (Ok/Error) objects to the ViewModels.
+    try {
+      _user = await _userRepository.getUser(userId);
+    } catch (e) {
+      _errorMessage = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+}
+```
+
+**4. View (UI Layer)**
+File: `/lib/features/users/ui/user_view.dart`
+```dart
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../logic/user_view_model.dart';
+
+class UserView extends StatefulWidget {
+  final String userId;
+
+  const UserView({Key? key, required this.userId}) : super(key: key);
+
+  @override
+  State<UserView> createState() => _UserViewState();
+}
+
+class _UserViewState extends State<UserView> {
+  @override
+  void initState() {
+    super.initState();
+    // Defer the load command until after the initial build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UserViewModel>().loadUser(widget.userId);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('User Profile')),
+      body: Consumer<UserViewModel>(
+        builder: (context, viewModel, child) {
+          if (viewModel.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (viewModel.errorMessage != null) {
+            return Center(child: Text('Error: ${viewModel.errorMessage}'));
+          }
+
+          if (viewModel.user == null) {
+            return const Center(child: Text('No user data available.'));
+          }
+
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Name: ${viewModel.user!.name}', style: const TextStyle(fontSize: 20)),
+                const SizedBox(height: 8),
+                Text('Email: ${viewModel.user!.email}'),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+```
