@@ -3,165 +3,184 @@ name: "flutter-performance"
 description: "Optimize the performance of your Flutter app"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 04 Mar 2026 21:54:56 GMT"
+  last_modified: "Wed, 11 Mar 2026 17:48:17 GMT"
 
 ---
-# Flutter Performance Optimization
+# Optimizing-Flutter-Performance
 
-## Goal
-Analyzes and optimizes Flutter application performance by identifying jank, excessive rebuilds, and expensive rendering operations. Implements best practices for UI rendering, state management, and layout constraints. Utilizes Flutter DevTools, Chrome DevTools (for web), and integration tests to generate actionable performance metrics, ensuring frames render within the strict 16ms budget.
-
-## Decision Logic
-Evaluate the target application using the following decision tree to determine the optimization path:
-
-1. **Is the goal to establish a performance baseline?**
-   * **Yes:** Implement an integration test using `traceAction` and `TimelineSummary`.
-   * **No:** Proceed to step 2.
-2. **Is the application running on Web?**
-   * **Yes:** Enable `debugProfileBuildsEnabled` and use Chrome DevTools Performance panel.
-   * **No:** Run the app on a physical device in `--profile` mode and launch Flutter DevTools.
-3. **Which thread is showing jank (red bars > 16ms) in the DevTools Performance View?**
-   * **UI Thread:** Optimize `build()` methods, localize `setState()`, use `const` constructors, and replace string concatenation with `StringBuffer`.
-   * **Raster (GPU) Thread:** Minimize `saveLayer()`, `Opacity`, `Clip`, and `ImageFilter` usage. Pre-cache complex images using `RepaintBoundary`.
-   * **Both:** Start by optimizing the UI thread (Dart VM), as expensive Dart code often cascades into expensive rendering.
+## When to Use
+* The user requests performance improvements, jank reduction, or memory optimization in a Flutter application.
+* The application experiences dropped frames, stuttering animations, or slow rendering times.
+* Setting up integration tests to measure and record performance timelines.
+* Debugging excessive widget rebuilds, expensive layout passes, or high CPU/GPU usage.
+* Migrating or refactoring UI components to adhere to Flutter performance best practices.
 
 ## Instructions
 
-1. **Establish a Performance Baseline**
-   To measure performance programmatically, create an integration test that records a performance timeline.
-   **STOP AND ASK THE USER:** **"Do you want to run a baseline integration test to capture timeline metrics before optimizing?"**
-   If yes, implement the following exact driver and test implementation:
+**Interaction Rule:** Evaluate the current project context for target platforms (mobile vs. web), existing performance metrics, and specific symptoms (e.g., UI thread jank vs. Raster thread jank). If missing, ask the user for clarification on the specific performance bottleneck before proceeding with implementation.
 
-   *test_driver/perf_driver.dart* (Immutable operation):
-   ```dart
-   import 'package:flutter_driver/flutter_driver.dart' as driver;
-   import 'package:integration_test/integration_test_driver.dart';
+1. **Plan:** 
+   * Identify the source of the performance issue by running the app in Profile mode on a physical device.
+   * Determine if the bottleneck is on the UI thread (Dart code/build methods) or the Raster thread (GPU/rendering).
+2. **Execute:** 
+   * Apply targeted optimizations based on the identified bottleneck (see Decision Logic).
+   * Refactor large widgets, localize state changes, and eliminate expensive rendering operations.
+3. **Measure:** 
+   * Write an integration test using `traceAction` to capture a performance timeline.
+   * Compare the `TimelineSummary` before and after the optimization to quantify improvements.
 
-   Future<void> main() {
-     return integrationDriver(
-       responseDataCallback: (data) async {
-         if (data != null) {
-           final timeline = driver.Timeline.fromJson(
-             data['scrolling_timeline'] as Map<String, dynamic>,
-           );
-           final summary = driver.TimelineSummary.summarize(timeline);
-           await summary.writeTimelineToFile(
-             'scrolling_timeline',
-             pretty: true,
-             includeSummary: true,
-           );
-         }
-       },
-     );
-   }
-   ```
+## Decision Logic
 
-   *integration_test/scrolling_test.dart*:
-   ```dart
-   import 'package:flutter/material.dart';
-   import 'package:flutter_test/flutter_test.dart';
-   import 'package:integration_test/integration_test.dart';
-   import 'package:your_package/main.dart';
+Use the following decision tree to determine the appropriate optimization strategy:
 
-   void main() {
-     final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+* **If the UI thread is slow (Red bars in UI graph):**
+  * Refactor large widgets into smaller, encapsulated `StatelessWidget` classes.
+  * Localize `setState()` calls to the smallest possible subtree.
+  * Add `const` constructors to widgets wherever possible.
+  * Avoid overriding `operator ==` on `Widget` objects.
+* **If the Raster thread is slow (Red bars in GPU graph):**
+  * Remove or minimize the use of `Opacity` widgets; use `AnimatedOpacity` or `FadeInImage` instead.
+  * Eliminate unnecessary clipping (`Clip.antiAliasWithSaveLayer`).
+  * Avoid operations that implicitly trigger `saveLayer()` (e.g., `ShaderMask`, `ColorFilter`, overlapping semi-transparent shapes).
+  * Pre-calculate and cache static shapes instead of drawing overlapping transparent layers.
+* **If lists or grids are causing jank:**
+  * Replace explicit lists (`ListView(children: [...])`) with lazy builders (`ListView.builder`).
+  * Avoid intrinsic layout passes by setting fixed sizes for cells or using custom `RenderObject` anchors.
+* **If profiling a Web App:**
+  * Use Chrome DevTools Performance panel instead of Flutter DevTools.
+  * Enable `debugProfileBuildsEnabled` or `debugProfileLayoutsEnabled` in the `main()` method to expose timeline events.
 
-     testWidgets('Performance profiling test', (tester) async {
-       await tester.pumpWidget(const MyApp());
-       final listFinder = find.byType(Scrollable);
-       final itemFinder = find.byKey(const ValueKey('target_item'));
+## Best Practices
 
-       await binding.traceAction(() async {
-         await tester.scrollUntilVisible(
-           itemFinder,
-           500.0,
-           scrollable: listFinder,
-         );
-       }, reportKey: 'scrolling_timeline');
-     });
-   }
-   ```
-   Run the test using: `flutter drive --driver=test_driver/perf_driver.dart --target=integration_test/scrolling_test.dart --profile --no-dds`
+* **Always profile in Profile Mode:** Never measure performance in Debug mode or on an emulator/simulator. Always use a physical device and run `flutter run --profile`.
+* **Use `const` extensively:** Enforce the use of `const` constructors to allow the framework to short-circuit widget rebuilds. Enable `flutter_lints` to catch missing `const` declarations.
+* **Prefer Widgets over Functions:** Extract reusable UI components into `StatelessWidget` classes rather than helper methods that return `Widget`. This allows the framework to optimize the widget tree.
+* **Optimize String Building:** Use `StringBuffer` when concatenating multiple strings inside a loop instead of the `+` operator to prevent excessive memory allocation.
+* **Avoid `Opacity` in Animations:** Do not use the `Opacity` widget in animations. Use `AnimatedOpacity` or apply gradual opacity using the GPU's fragment shader via `FadeInImage`.
+* **Manage `AnimatedBuilder` Subtrees:** Do not put static widgets inside the `builder` function of an `AnimatedBuilder`. Build the static subtree once and pass it as the `child` parameter.
+* **Handle Overlay and Route State:** Ensure that state modifications resulting from `Navigator.pushNamed` or `OverlayEntry` changes are explicitly wrapped in `setState()` to guarantee proper rebuilds.
 
-2. **Optimize UI Thread (Build Costs)**
-   If the UI thread exceeds 8ms per frame, refactor the widget tree:
-   *   **Localize State:** Move `setState` calls as low in the widget tree as possible.
-   *   **Use `const`:** Apply `const` constructors to short-circuit rebuild traversals.
-   *   **String Building:** Replace `+` operators in loops with `StringBuffer`.
+## Examples
 
-   ```dart
-   // BAD: Rebuilds entire widget tree
-   setState(() { _counter++; });
+### Gold Standard: Localizing State and Using Const
 
-   // GOOD: Encapsulated state
-   class CounterWidget extends StatefulWidget { ... }
-   // Inside CounterWidget:
-   setState(() { _counter++; });
-   ```
+```dart
+import 'package:flutter/material.dart';
 
-   ```dart
-   // GOOD: Efficient string building
-   final buffer = StringBuffer();
-   for (int i = 0; i < 1000; i++) {
-     buffer.write('Item $i');
-   }
-   final result = buffer.toString();
-   ```
+// BAD: Calling setState high in the tree rebuilds everything.
+// GOOD: Extract the changing part into its own StatefulWidget.
+class CounterWidget extends StatefulWidget {
+  const CounterWidget({super.key});
 
-3. **Optimize Raster Thread (Rendering Costs)**
-   If the Raster thread exceeds 8ms per frame, eliminate expensive painting operations:
-   *   Replace `Opacity` widgets with semitransparent colors where possible.
-   *   Replace `Opacity` in animations with `AnimatedOpacity` or `FadeInImage`.
-   *   Avoid `Clip.antiAliasWithSaveLayer`. Use `borderRadius` properties on containers instead of explicit clipping widgets.
+  @override
+  State<CounterWidget> createState() => _CounterWidgetState();
+}
 
-   ```dart
-   // BAD: Expensive Opacity widget
-   Opacity(
-     opacity: 0.5,
-     child: Container(color: Colors.red),
-   )
+class _CounterWidgetState extends State<CounterWidget> {
+  int _counter = 0;
 
-   // GOOD: Semitransparent color
-   Container(color: Colors.red.withOpacity(0.5))
-   ```
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // The Text widget rebuilds only when _counter changes.
+        Text('Count: $_counter'),
+        const SizedBox(width: 16.0), // Use const for static widgets
+        ElevatedButton(
+          onPressed: () {
+            setState(() {
+              _counter++;
+            });
+          },
+          child: const Text('Increment'), // Use const for static widgets
+        ),
+      ],
+    );
+  }
+}
 
-4. **Fix Layout and Intrinsic Passes**
-   Identify and remove excessive layout passes caused by intrinsic operations (e.g., asking all children for their size before laying them out).
-   *   Use lazy builders (`ListView.builder`, `GridView.builder`) for long lists.
-   *   Avoid `ShrinkWrap: true` on scrollables unless absolutely necessary.
+class MyComplexScreen extends StatelessWidget {
+  const MyComplexScreen({super.key});
 
-5. **Handle Framework Breaking Changes (Validate-and-Fix)**
-   Ensure the application complies with recent Flutter optimization changes regarding `LayoutBuilder` and `OverlayEntry`. These widgets no longer rebuild implicitly.
-   *   **Validate:** Check if `LayoutBuilder` or `OverlayEntry` UI fails to update.
-   *   **Fix:** Wrap the state modification triggering the update in an explicit `setState`.
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Performance Example')),
+      body: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('This static text never rebuilds.'),
+            SizedBox(height: 20),
+            CounterWidget(), // Only this widget rebuilds on tap
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
 
-   ```dart
-   // FIX: Explicit setState for Overlay/Route changes
-   final newLabel = await Navigator.pushNamed(context, '/bar');
-   setState(() {
-     buttonLabel = newLabel;
-   });
-   ```
+### Gold Standard: Performance Profiling Integration Test
 
-6. **Web-Specific Profiling**
-   If profiling for Web, inject timeline events into Chrome DevTools by adding these flags to `main()` before `runApp()`:
-   ```dart
-   import 'package:flutter/widgets.dart';
-   import 'package:flutter/rendering.dart';
+**integration_test/scrolling_test.dart**
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:my_app/main.dart';
 
-   void main() {
-     debugProfileBuildsEnabled = true;
-     debugProfileBuildsEnabledUserWidgets = true;
-     debugProfileLayoutsEnabled = true;
-     debugProfilePaintsEnabled = true;
-     runApp(const MyApp());
-   }
-   ```
-   **STOP AND ASK THE USER:** **"Have you captured the Chrome DevTools performance profile? Please share the timeline event bottlenecks if you need specific refactoring."**
+void main() {
+  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-## Constraints
-*   **NEVER** profile performance in Debug mode. Always use `--profile` mode on a physical device.
-*   **NEVER** override `operator ==` on `Widget` objects. It results in O(N²) behavior and degrades performance. Rely on `const` caching instead.
-*   **NEVER** put a subtree in an `AnimatedBuilder` that does not depend on the animation. Build the static part once and pass it as the `child` parameter.
-*   **DO NOT** use constructors with a concrete `List` of children (e.g., `Column`, `ListView`) if most children are off-screen. Always use `.builder` constructors for lazy loading.
-*   **DO NOT** use `saveLayer()` unless absolutely necessary (e.g., dynamic overlapping shapes with transparency). Precalculate and cache static overlapping shapes.
+  testWidgets('Scroll performance test', (tester) async {
+    // Build the app and trigger a frame.
+    await tester.pumpWidget(
+      MyApp(items: List<String>.generate(10000, (i) => 'Item $i')),
+    );
+
+    final listFinder = find.byType(Scrollable);
+    final itemFinder = find.byKey(const ValueKey('item_5000_text'));
+
+    // Record the performance timeline
+    await binding.traceAction(() async {
+      // Scroll until the specific item is visible
+      await tester.scrollUntilVisible(
+        itemFinder,
+        500.0,
+        scrollable: listFinder,
+      );
+    }, reportKey: 'scrolling_timeline');
+  });
+}
+```
+
+**test_driver/perf_driver.dart**
+```dart
+import 'package:flutter_driver/flutter_driver.dart' as driver;
+import 'package:integration_test/integration_test_driver.dart';
+
+Future<void> main() {
+  return integrationDriver(
+    responseDataCallback: (data) async {
+      if (data != null) {
+        final timeline = driver.Timeline.fromJson(
+          data['scrolling_timeline'] as Map<String, dynamic>,
+        );
+
+        // Convert the Timeline into a TimelineSummary
+        final summary = driver.TimelineSummary.summarize(timeline);
+
+        // Write the entire timeline to disk in a json format.
+        // This file can be opened in chrome://tracing.
+        await summary.writeTimelineToFile(
+          'scrolling_timeline',
+          pretty: true,
+          includeSummary: true,
+        );
+      }
+    },
+  );
+}
+```

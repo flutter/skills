@@ -3,154 +3,206 @@ name: "flutter-plugins"
 description: "Build a Flutter plugin that provides native interop for other Flutter apps to use"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 04 Mar 2026 21:07:42 GMT"
+  last_modified: "Wed, 11 Mar 2026 17:46:47 GMT"
 
 ---
-# flutter-plugin-generator
+# Developing-Flutter-Plugins
 
-## Goal
-Scaffolds and configures Flutter plugin packages, handling standard method channels, FFI integrations, and federated plugin architectures. It configures platform-specific native code environments, implements Android v2 embedding lifecycle interfaces, and establishes platform interface packages.
+## When to Use
+* The user needs to create a new Flutter plugin, FFI package, or Dart package.
+* The user needs to integrate native platform APIs (Android, iOS, macOS, Windows, Linux) with Dart code.
+* The user is migrating an older Android plugin to the v2 embedding (`FlutterPlugin`, `ActivityAware`).
+* The user is adding Swift Package Manager (SPM) support to an iOS/macOS plugin.
+* The user needs to implement type-safe platform channels using Pigeon.
+* The user needs to test a Flutter plugin across Dart and native environments.
 
 ## Decision Logic
+Evaluate the required native integration to determine the package type:
 
-Use the following decision tree to determine the plugin architecture and template:
-
-1. **Does the plugin require C/C++ native code via `dart:ffi`?**
-   * **Yes:** Use `--template=plugin_ffi`.
-     * *Note:* FFI plugins support bundling native code and method channel registration, but *not* method channels themselves.
-   * **No:** Proceed to step 2.
-2. **Does the plugin require BOTH `dart:ffi` and Method Channels?**
-   * **Yes:** Use `--template=plugin` (Non-FFI). You must configure FFI manually within the standard plugin structure.
-   * **No:** Proceed to step 3.
-3. **Will the plugin be developed by multiple teams or require highly decoupled platform implementations?**
-   * **Yes:** Implement a **Package-Separated Federated Plugin** (App-facing package, Platform Interface package, Platform Implementation packages).
-   * **No:** Implement a standard monolithic plugin.
+1. **Does the package require native C/C++ code without method channels?**
+   * **Yes:** Use an **FFI Plugin**. It supports bundling native code and method channel registration code, but not method channels themselves. Useful for accessing the Flutter Plugin API, configuring Google Play services, or static linking on iOS/macOS.
+2. **Does the package require platform-specific APIs (Java/Kotlin/Swift/Obj-C/C++)?**
+   * **Yes:** Use a **Standard Plugin**. It uses platform channels to communicate between Dart and native code.
+3. **Does the package require pure Dart logic only?**
+   * **Yes:** Use a **Dart Package**.
+4. **Does the plugin need to support multiple platforms managed by different teams/experts?**
+   * **Yes:** Use a **Federated Plugin** architecture. Split the API into an app-facing interface, a platform interface, and independent platform implementations.
 
 ## Instructions
 
-1. **Gather Plugin Requirements**
-   **STOP AND ASK THE USER:**
-   * What is the plugin name?
-   * What is the organization name (reverse domain notation, e.g., `com.example`)?
-   * Which platforms should be supported (comma-separated: `android,ios,web,linux,macos,windows`)?
-   * Do you need an FFI plugin or a standard Method Channel plugin?
-   * Do you prefer Java or Kotlin for Android? Objective-C or Swift for iOS?
-   * Should this be a federated plugin?
+**Interaction Rule:** Evaluate the current project context for target platforms, organization name (`--org`), and preferred native languages (`-i`, `-a`). If missing, ask the user for clarification before proceeding with implementation.
 
-2. **Generate the Plugin Package**
-   Execute the Flutter CLI command based on the user's parameters. 
-   
-   *Standard Plugin Example:*
-   ```bash
-   flutter create --org com.example --template=plugin --platforms=android,ios,macos -a kotlin -i swift my_plugin
-   ```
-   
-   *FFI Plugin Example:*
-   ```bash
-   flutter create --template=plugin_ffi my_ffi_plugin
-   ```
+### 1. Create the Package
+Execute the appropriate creation command based on the decision logic.
 
-3. **Configure Federated Plugin Architecture (If Applicable)**
-   If the user requested a federated plugin, configure the `pubspec.yaml` of the app-facing package to endorse the platform implementations.
+* **Standard Plugin:**
+  Run `flutter create --template=plugin --platforms=<platforms> --org <org_name> <plugin_name>`.
+  * Specify supported platforms using a comma-separated list (e.g., `--platforms=android,ios,web,linux,macos,windows`). If omitted, the project will not support any platforms.
+  * Specify the organization using reverse domain name notation (e.g., `--org com.example`).
+  * By default, plugins use Swift (iOS) and Kotlin (Android). Specify Objective-C or Java using the `-i objc` and `-a java` flags respectively.
+* **FFI Plugin:**
+  Run `flutter create --template=plugin_ffi <plugin_name>`. This creates Dart code in `lib` using `dart:ffi` and native source code in `src` with a `CMakeLists.txt` file.
+* **Add Platforms to Existing Plugin:**
+  Run `flutter create --template=plugin --platforms=<new_platforms> .` inside the existing project directory.
 
-   ```yaml
-   # App-facing pubspec.yaml
-   flutter:
-     plugin:
-       platforms:
-         android:
-           default_package: my_plugin_android
-         windows:
-           default_package: my_plugin_windows
+### 2. Implement the Dart API
+Define the public-facing API in Dart, typically located in `lib/<package_name>.dart`. Connect the Dart API with platform-specific implementations using a platform channel or through interfaces defined in a platform interface package.
 
-   dependencies:
-     my_plugin_android: ^1.0.0
-     my_plugin_windows: ^1.0.0
-   ```
+### 3. Implement Native Platform Code
+Build the code at least once before editing native files to ensure dependencies are resolved.
 
-   For the platform implementation packages, define the `implements` key:
-   ```yaml
-   # Platform implementation pubspec.yaml (e.g., my_plugin_windows)
-   flutter:
-     plugin:
-       implements: my_plugin
-       platforms:
-         windows:
-           pluginClass: MyPlugin
-   ```
+* **Android:**
+  1. Run `cd example/android && ./gradlew build`.
+  2. Open `example/android/build.gradle` or `example/android/build.gradle.kts` in Android Studio.
+  3. Edit the platform code located in `android/src/main/java/<org_path>/<PluginName>.kt` (or `.java`).
+* **Windows:**
+  1. Run `flutter build windows` in the example directory.
+  2. Open `example/build/windows/<plugin_name>_example.sln` in Visual Studio.
+  3. Edit code in `<plugin_name>_plugin/Source Files` and `Header Files`.
+  4. **Crucial:** You must rebuild the solution in Visual Studio after making changes to plugin code.
+* **iOS/macOS:**
+  1. Run `flutter build ios --no-codesign --config-only` (or `macos`).
+  2. Open `example/ios/Runner.xcworkspace` in Xcode.
+  3. Update the `podspec` file to set dependencies and deployment targets.
 
-4. **Prepare Native Environments for Editing**
-   Before modifying native code, you MUST build the example app to resolve dependencies and generate necessary files.
-   ```bash
-   cd my_plugin/example
-   flutter build apk --config-only # For Android
-   flutter build ios --no-codesign --config-only # For iOS
-   flutter build windows # For Windows
-   ```
+### 4. Upgrade Android Plugins to v2 Embedding
+If migrating or building a new Android plugin:
+1. Implement the `FlutterPlugin` interface.
+2. Move logic from the legacy `registerWith()` method into a private method that both `registerWith()` and `onAttachedToEngine()` can call (only one will be called at runtime).
+3. If the plugin needs an `Activity` reference, implement the `ActivityAware` interface.
+4. If the plugin is expected to be held in a background `Service`, implement `ServiceAware`.
+5. Update the example app's `MainActivity.java` to use the v2 embedding `io.flutter.embedding.android.FlutterActivity`.
+6. Ensure the plugin class has a public constructor.
 
-5. **Implement Android v2 Embedding Lifecycle**
-   Modify the Android plugin class (e.g., `android/src/main/kotlin/com/example/my_plugin/MyPlugin.kt`). Extract logic from `registerWith()` into a private method shared with `onAttachedToEngine()`. Implement `ActivityAware` or `ServiceAware` if context is needed.
+## Best Practices
 
-   ```kotlin
-   package com.example.my_plugin
+* **Threading:** Invoke platform channel methods on the platform's main thread (UI thread). If executing heavy workloads, use the Task Queue API to execute channel handlers on a background thread.
+* **Type Safety:** Use the `pigeon` package to generate type-safe platform channels instead of relying on raw `MethodChannel` strings and dynamic maps.
+* **Documentation:** Document all non-overridden public members in your plugin classes.
+* **Dependency Management:** Use declarative `plugins {}` blocks in Android Gradle files rather than the legacy imperative `apply plugin:` syntax.
+* **Testing:** 
+  * Write Dart unit tests for pure Dart logic.
+  * Write native unit tests (JUnit for Android, XCTest for iOS/macOS, GoogleTest for Windows/Linux) to test native code in isolation.
+  * Write integration tests in `example/integration_test/` to test the communication between Dart and native code.
+* **Federated Endorsement:** When adding new platform implementations to endorsed federated plugins on pub.dev, coordinate with the original plugin author to add your package as a `default_package` in their `pubspec.yaml`.
 
-   import androidx.annotation.NonNull
-   import io.flutter.embedding.engine.plugins.FlutterPlugin
-   import io.flutter.embedding.engine.plugins.activity.ActivityAware
-   import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
-   import io.flutter.plugin.common.MethodCall
-   import io.flutter.plugin.common.MethodChannel
-   import io.flutter.plugin.common.MethodChannel.MethodCallHandler
-   import io.flutter.plugin.common.MethodChannel.Result
+## Examples
 
-   class MyPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
-     private lateinit var channel : MethodChannel
+### Gold Standard: Android v2 Embedding Plugin (Kotlin)
+Demonstrates implementing `FlutterPlugin`, `ActivityAware`, and sharing initialization logic.
 
-     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-       setupChannel(flutterPluginBinding.binaryMessenger)
-     }
+```kotlin
+package com.example.battery_plugin
 
-     // Shared private method for v1 and v2 embedding compatibility
-     private fun setupChannel(messenger: BinaryMessenger) {
-       channel = MethodChannel(messenger, "my_plugin")
-       channel.setMethodCallHandler(this)
-     }
+import android.app.Activity
+import android.content.Context
+import androidx.annotation.NonNull
+import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
+import io.flutter.plugin.common.MethodCall
+import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.MethodChannel.MethodCallHandler
+import io.flutter.plugin.common.MethodChannel.Result
 
-     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
-       if (call.method == "getPlatformVersion") {
-         result.success("Android ${android.os.Build.VERSION.RELEASE}")
-       } else {
-         result.notImplemented()
-       }
-     }
+class BatteryPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
+    private lateinit var channel: MethodChannel
+    private var context: Context? = null
+    private var activity: Activity? = null
 
-     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-       channel.setMethodCallHandler(null)
-     }
+    // Public constructor required for v2 embedding
+    constructor()
 
-     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-       // Handle Activity attachment
-     }
+    override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+        setupChannel(flutterPluginBinding.binaryMessenger, flutterPluginBinding.applicationContext)
+    }
 
-     override fun onDetachedFromActivityForConfigChanges() {}
-     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {}
-     override fun onDetachedFromActivity() {}
-   }
-   ```
+    // Legacy v1 embedding support
+    companion object {
+        @JvmStatic
+        fun registerWith(registrar: io.flutter.plugin.common.PluginRegistry.Registrar) {
+            val plugin = BatteryPlugin()
+            plugin.setupChannel(registrar.messenger(), registrar.context())
+            plugin.activity = registrar.activity()
+        }
+    }
 
-6. **Validate and Fix**
-   Run the plugin tests and analyzer to ensure the generated code is valid.
-   ```bash
-   cd my_plugin
-   flutter analyze
-   flutter test
-   ```
-   *If the analyzer reports missing dependencies or unresolved native symbols, verify that step 4 (building the example app) was executed successfully. Fix any missing imports in the native code blocks.*
+    // Shared initialization logic
+    private fun setupChannel(messenger: io.flutter.plugin.common.BinaryMessenger, context: Context) {
+        this.context = context
+        channel = MethodChannel(messenger, "com.example.battery_plugin/battery")
+        channel.setMethodCallHandler(this)
+    }
 
-## Constraints
+    override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+        if (call.method == "getBatteryLevel") {
+            val batteryLevel = getBatteryLevel()
+            if (batteryLevel != -1) {
+                result.success(batteryLevel)
+            } else {
+                result.error("UNAVAILABLE", "Battery level not available.", null)
+            }
+        } else {
+            result.notImplemented()
+        }
+    }
 
-* **Never** attempt to use Method Channels inside a package created with `--template=plugin_ffi`. If both are required, use `--template=plugin`.
-* **Always** build the example project (`flutter build <platform>`) at least once before attempting to edit or analyze native Android (`build.gradle`), iOS (`.xcworkspace`), or Windows (`.sln`) files.
-* **Never** leave public members undocumented in the Dart API (`lib/<package_name>.dart`).
-* **Always** use the v2 Android embedding (`FlutterPlugin`). Do not rely solely on the deprecated `PluginRegistry.Registrar`.
-* **Never** edit the `.android` or `.ios` directories inside a Flutter module; only edit the native code inside the plugin's `android/` or `ios/` directories.
+    private fun getBatteryLevel(): Int {
+        // Native battery logic here
+        return 100
+    }
+
+    override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
+        channel.setMethodCallHandler(null)
+        context = null
+    }
+
+    // ActivityAware Implementation
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        activity = binding.activity
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        activity = null
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        activity = binding.activity
+    }
+
+    override fun onDetachedFromActivity() {
+        activity = null
+    }
+}
+```
+
+### Gold Standard: Type-Safe Channels with Pigeon
+Define the interface in Dart, then generate the native code.
+
+```dart
+// pigeons/battery_api.dart
+import 'package:pigeon/pigeon.dart';
+
+class BatteryInfo {
+  final int level;
+  final String status;
+
+  BatteryInfo({required this.level, required this.status});
+}
+
+@HostApi()
+abstract class BatteryApi {
+  @async
+  BatteryInfo getBatteryInfo();
+}
+```
+
+Generate the code using the CLI:
+```bash
+flutter pub run pigeon \
+  --input pigeons/battery_api.dart \
+  --dart_out lib/src/battery_api.g.dart \
+  --experimental_kotlin_out android/src/main/kotlin/com/example/battery_plugin/BatteryApi.g.kt \
+  --experimental_kotlin_package "com.example.battery_plugin" \
+  --experimental_swift_out ios/Classes/BatteryApi.g.swift
+```

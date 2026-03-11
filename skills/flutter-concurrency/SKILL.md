@@ -3,200 +3,205 @@ name: "flutter-concurrency"
 description: "Execute long-running tasks in a background thread in Flutter"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 04 Mar 2026 22:25:47 GMT"
+  last_modified: "Wed, 11 Mar 2026 17:49:36 GMT"
 
 ---
-# Flutter Concurrency and Data Management
+# Implementing-Flutter-Concurrency-and-Data-Processing
 
-## Goal
-Implements advanced Flutter data handling, including background JSON serialization using Isolates, asynchronous state management, and platform-aware concurrency to ensure jank-free 60fps+ UI rendering. Assumes a standard Flutter environment (Dart 2.19+) with access to `dart:convert`, `dart:isolate`, and standard state management paradigms.
-
-## Decision Logic
-Use the following decision tree to determine the correct serialization and concurrency approach before writing code:
-
-1. **Serialization Strategy:**
-   * *Condition:* Is the JSON model simple, flat, and rarely changed?
-     * *Action:* Use **Manual Serialization** (`dart:convert`).
-   * *Condition:* Is the JSON model complex, nested, or part of a large-scale application?
-     * *Action:* Use **Code Generation** (`json_serializable` and `build_runner`).
-2. **Concurrency Strategy:**
-   * *Condition:* Is the data payload small and parsing takes < 16ms?
-     * *Action:* Run on the **Main UI Isolate** using standard `async`/`await`.
-   * *Condition:* Is the data payload large (e.g., > 1MB JSON) or computationally expensive?
-     * *Action:* Offload to a **Background Isolate** using `Isolate.run()`.
-   * *Condition:* Does the background task require continuous, two-way communication over time?
-     * *Action:* Implement a **Long-lived Isolate** using `ReceivePort` and `SendPort`.
-   * *Condition:* Is the target platform Web?
-     * *Action:* Use `compute()` as a fallback, as standard `dart:isolate` threading is not supported on Flutter Web.
+## When to Use
+* The agent needs to perform heavy computational tasks without blocking the main UI thread.
+* The agent is parsing, decoding, or serializing large JSON payloads.
+* The agent is implementing long-lived background workers for continuous data processing.
+* The agent needs to manage asynchronous state updates and display `Future` or `Stream` results in a Flutter application.
 
 ## Instructions
 
-### 1. Determine Environment and Payload Context
-**STOP AND ASK THE USER:**
-* "Are you targeting Flutter Web, Mobile, or Desktop?"
-* "What is the expected size and complexity of the JSON payload?"
-* "Do you prefer manual JSON serialization or code generation (`json_serializable`)?"
+**Interaction Rule:** Evaluate the current project context for target platforms (e.g., Web vs. Mobile), existing state management solutions, and expected API payload sizes. If this information is missing or ambiguous, ask the user for clarification before proceeding with implementation.
 
-### 2. Implement JSON Serialization Models
-Based on the user's preference, implement the data models.
+### Plan
+1. **Analyze the Task:** Determine if the operation is I/O-bound (network, disk) or CPU-bound (parsing large JSON, complex math).
+2. **Select the Concurrency Model:** Use the Decision Logic below to choose between standard asynchronous execution, short-lived isolates, or long-lived isolates.
+3. **Design the Data Flow:** Define the data structures being passed. Ensure objects passed between isolates are immutable or easily serializable.
 
-**Option A: Manual Serialization**
+### Execute
+1. Implement the chosen concurrency model using Dart's `async`/`await`, `Isolate.run()`, or `ReceivePort`/`SendPort`.
+2. Integrate JSON serialization using `dart:convert` for simple tasks or `json_serializable` for complex models.
+3. Bind the asynchronous results to the UI using `FutureBuilder` or `StreamBuilder`.
+
+### Decision Logic for Concurrency
+Use the following decision tree to determine the appropriate concurrency implementation:
+
+* **Is the target platform Web?**
+  * **Yes:** Use `compute()` or standard `async`/`await`. (Isolates are not supported on the web).
+  * **No:** Proceed to next step.
+* **Is the task strictly I/O-bound (e.g., fetching data over HTTP, reading a small file)?**
+  * **Yes:** Use standard `async` and `await` on the main isolate. The event loop will handle it without freezing the UI.
+  * **No:** Proceed to next step.
+* **Is the task a one-time heavy computation (e.g., decoding a >10KB JSON blob)?**
+  * **Yes:** Use `Isolate.run()` to spawn a short-lived background worker.
+  * **No:** Proceed to next step.
+* **Does the task require continuous, repeated execution or multiple message passes over time?**
+  * **Yes:** Use the `Isolate` API with `ReceivePort` and `SendPort` to establish a long-lived background worker.
+
+## Best Practices
+
+* **Understand the Execution Model:** Remember that Dart has a single-threaded execution model driven by an event loop. All code runs in isolates, which have their own isolated memory and do not share state.
+* **Never Block the Main Isolate:** Use `async` and `await` to allow other operations to execute before a task completes. Functions marked as `async` automatically return a `Future`.
+* **Offload Heavy Tasks:** Use `Isolate.run()` (Dart 2.19+) for long-running operations that might block UI rendering. Pass a callback with exactly one required, unnamed argument.
+* **Communicate via Ports for Long-Lived Tasks:** Exclusively use `ReceivePort` (acts as a listener) and `SendPort` (acts like a `StreamController`) for messaging between long-lived isolates.
+* **Optimize Message Passing:** Pass immutable objects (like `String` or unmodifiable bytes) between isolates when possible to send references rather than copying data, improving performance.
+* **Automate JSON Serialization:** For medium to large projects, use `json_serializable` and `build_runner` to generate deterministic, type-safe serialization code instead of manually parsing `Map<String, dynamic>`.
+* **Handle Errors Gracefully:** Always wrap asynchronous network and parsing operations in `try/catch` blocks. Handle `AsyncSnapshot.hasError` states within your `FutureBuilder` or `StreamBuilder` widgets.
+
+## Examples
+
+### Gold Standard: Short-Lived Isolate for JSON Parsing
+Use `Isolate.run()` to decode a large JSON payload without dropping UI frames.
+
 ```dart
-import 'dart:convert';
-
-class User {
-  final String name;
-  final String email;
-
-  User(this.name, this.email);
-
-  User.fromJson(Map<String, dynamic> json)
-      : name = json['name'] as String,
-        email = json['email'] as String;
-
-  Map<String, dynamic> toJson() => {'name': name, 'email': email};
-}
-```
-
-**Option B: Code Generation (`json_serializable`)**
-Ensure `json_annotation` is in `dependencies`, and `build_runner` / `json_serializable` are in `dev_dependencies`.
-```dart
-import 'package:json_annotation/json_annotation.dart';
-
-part 'user.g.dart';
-
-@JsonSerializable(explicitToJson: true)
-class User {
-  final String name;
-  
-  @JsonKey(name: 'email_address', defaultValue: 'unknown@example.com')
-  final String email;
-
-  User(this.name, this.email);
-
-  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
-  Map<String, dynamic> toJson() => _$UserToJson(this);
-}
-```
-*Validate-and-Fix:* Instruct the user to run `dart run build_runner build --delete-conflicting-outputs` to generate the `*.g.dart` file.
-
-### 3. Implement Background Parsing (Isolates)
-To prevent UI jank, offload heavy JSON parsing to a background isolate.
-
-**Option A: Short-lived Isolate (Dart 2.19+)**
-Use `Isolate.run()` for one-off heavy computations.
-```dart
+// lib/services/data_service.dart
 import 'dart:convert';
 import 'dart:isolate';
-import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 
-Future<List<User>> fetchAndParseUsers() async {
-  // 1. Load data on the main isolate
-  final String jsonString = await rootBundle.loadString('assets/large_users.json');
-  
-  // 2. Spawn an isolate, pass the computation, and await the result
-  final List<User> users = await Isolate.run<List<User>>(() {
-    // This runs on the background isolate
-    final List<dynamic> decoded = jsonDecode(jsonString) as List<dynamic>;
-    return decoded.cast<Map<String, dynamic>>().map(User.fromJson).toList();
-  });
-  
-  return users;
-}
-```
+class DataService {
+  static const String _apiUrl = 'https://api.example.com/large-payload';
 
-**Option B: Long-lived Isolate (Continuous Data Stream)**
-Use `ReceivePort` and `SendPort` for continuous communication.
-```dart
-import 'dart:isolate';
-
-Future<void> setupLongLivedIsolate() async {
-  final ReceivePort mainReceivePort = ReceivePort();
-  
-  await Isolate.spawn(_backgroundWorker, mainReceivePort.sendPort);
-  
-  final SendPort backgroundSendPort = await mainReceivePort.first as SendPort;
-  
-  // Send data to the background isolate
-  final ReceivePort responsePort = ReceivePort();
-  backgroundSendPort.send(['https://api.example.com/data', responsePort.sendPort]);
-  
-  final result = await responsePort.first;
-  print('Received from background: $result');
-}
-
-static void _backgroundWorker(SendPort mainSendPort) async {
-  final ReceivePort workerReceivePort = ReceivePort();
-  mainSendPort.send(workerReceivePort.sendPort);
-  
-  await for (final message in workerReceivePort) {
-    final String url = message[0] as String;
-    final SendPort replyPort = message[1] as SendPort;
-    
-    // Perform heavy work here
-    final parsedData = await _heavyNetworkAndParse(url);
-    replyPort.send(parsedData);
+  /// Fetches and parses a large JSON array in a background isolate.
+  Future<List<Map<String, dynamic>>> fetchAndParseData() async {
+    try {
+      final response = await http.get(Uri.parse(_apiUrl));
+      
+      if (response.statusCode == 200) {
+        // Offload the heavy JSON decoding to a background worker
+        final parsedData = await Isolate.run(() {
+          final decoded = jsonDecode(response.body) as List<dynamic>;
+          return decoded.cast<Map<String, dynamic>>();
+        });
+        
+        return parsedData;
+      } else {
+        throw Exception('Failed to load data: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Network or parsing error: $e');
+    }
   }
 }
 ```
 
-### 4. Integrate with UI State Management
-Bind the asynchronous isolate computation to the UI using `FutureBuilder` to ensure the main thread remains responsive.
+### Gold Standard: Long-Lived Isolate with Two-Way Communication
+Use `ReceivePort` and `SendPort` for continuous background processing.
 
 ```dart
-import 'package:flutter/material.dart';
+// lib/services/background_worker.dart
+import 'dart:isolate';
 
-class UserListScreen extends StatefulWidget {
-  const UserListScreen({super.key});
+class BackgroundWorker {
+  SendPort? _backgroundSendPort;
+  final ReceivePort _mainReceivePort = ReceivePort();
+
+  Future<void> initialize() async {
+    // Spawn the isolate and pass the main isolate's SendPort
+    await Isolate.spawn(_workerEntrypoint, _mainReceivePort.sendPort);
+
+    // Listen for messages from the background isolate
+    _mainReceivePort.listen((message) {
+      if (message is SendPort) {
+        // First message is the background isolate's SendPort
+        _backgroundSendPort = message;
+      } else {
+        // Handle subsequent data messages
+        print('Received processed data from background: $message');
+      }
+    });
+  }
+
+  void sendDataForProcessing(String data) {
+    if (_backgroundSendPort != null) {
+      _backgroundSendPort!.send(data);
+    } else {
+      print('Worker not fully initialized yet.');
+    }
+  }
+
+  void dispose() {
+    _mainReceivePort.close();
+  }
+
+  /// The entrypoint for the background isolate. Must be a top-level or static function.
+  static void _workerEntrypoint(SendPort mainSendPort) {
+    final backgroundReceivePort = ReceivePort();
+    
+    // Send the background port back to the main isolate to establish two-way communication
+    mainSendPort.send(backgroundReceivePort.sendPort);
+
+    // Listen for incoming tasks
+    backgroundReceivePort.listen((message) {
+      if (message is String) {
+        // Perform heavy computation
+        final result = message.toUpperCase(); // Example computation
+        
+        // Send result back to main isolate
+        mainSendPort.send(result);
+      }
+    });
+  }
+}
+```
+
+### Gold Standard: Binding Asynchronous Data to the UI
+Use `FutureBuilder` to reactively display the state of a `Future`.
+
+```dart
+// lib/ui/screens/data_screen.dart
+import 'package:flutter/material.dart';
+import '../services/data_service.dart';
+
+class DataScreen extends StatefulWidget {
+  const DataScreen({super.key});
 
   @override
-  State<UserListScreen> createState() => _UserListScreenState();
+  State<DataScreen> createState() => _DataScreenState();
 }
 
-class _UserListScreenState extends State<UserListScreen> {
-  late Future<List<User>> _usersFuture;
+class _DataScreenState extends State<DataScreen> {
+  late Future<List<Map<String, dynamic>>> _dataFuture;
+  final DataService _dataService = DataService();
 
   @override
   void initState() {
     super.initState();
-    _usersFuture = fetchAndParseUsers(); // Calls the Isolate.run method
+    _dataFuture = _dataService.fetchAndParseData();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Users')),
-      body: FutureBuilder<List<User>>(
-        future: _usersFuture,
+      appBar: AppBar(title: const Text('Async Data Load')),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _dataFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No users found.'));
+          } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+            final data = snapshot.data!;
+            return ListView.builder(
+              itemCount: data.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(data[index]['name'] ?? 'Unknown'),
+                );
+              },
+            );
+          } else {
+            return const Center(child: Text('No data available.'));
           }
-
-          final users = snapshot.data!;
-          return ListView.builder(
-            itemCount: users.length,
-            itemBuilder: (context, index) {
-              return ListTile(
-                title: Text(users[index].name),
-                subtitle: Text(users[index].email),
-              );
-            },
-          );
         },
       ),
     );
   }
 }
 ```
-
-## Constraints
-* **No UI in Isolates:** Never attempt to access `dart:ui`, `rootBundle`, or manipulate Flutter Widgets inside a spawned isolate. Isolates do not share memory with the main thread.
-* **Web Platform Limitations:** `dart:isolate` is not supported on Flutter Web. If targeting Web, you MUST use the `compute()` function from `package:flutter/foundation.dart` instead of `Isolate.run()`, as `compute()` safely falls back to the main thread on web platforms.
-* **Immutable Messages:** When passing data between isolates via `SendPort`, prefer passing immutable objects (like Strings or unmodifiable byte data) to avoid deep-copy performance overhead.
-* **State Immutability:** Always treat `Widget` properties as immutable. Use `StatefulWidget` and `setState` (or a state management package) to trigger rebuilds when asynchronous data resolves.
-* **Reflection:** Do not use `dart:mirrors` for JSON serialization. Flutter disables runtime reflection to enable aggressive tree-shaking and AOT compilation. Always use manual parsing or code generation.

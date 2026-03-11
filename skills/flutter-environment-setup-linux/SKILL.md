@@ -3,65 +3,75 @@ name: "flutter-environment-setup-linux"
 description: "Set up a Linux environment for Flutter development"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Thu, 26 Feb 2026 23:45:21 GMT"
+  last_modified: "Wed, 11 Mar 2026 17:35:43 GMT"
 
 ---
-# flutter-linux-setup
+# Setting-Up-Flutter-On-Linux
 
-## Goal
-Configures a Linux environment (Debian/Ubuntu or ChromeOS) for Flutter desktop application development by installing required system prerequisites, managing OS-specific configurations, and validating the toolchain.
-
-## Decision Logic
-*   **If OS is ChromeOS:** Require manual enablement of Linux support before proceeding to package installation.
-*   **If OS is Debian/Ubuntu:** Proceed directly to `apt-get` package updates and installations.
-*   **If OS is non-Debian (e.g., Fedora, Arch):** Halt and inform the user that this skill specifically targets `apt-get` package managers.
+## When to Use
+* The agent needs to configure a Linux or ChromeOS environment to build, run, and deploy Flutter desktop applications.
+* The system requires installation of Flutter prerequisite packages and C++ toolchains on a Debian-based distribution (e.g., Ubuntu).
+* The user needs to resolve "Linux toolchain" errors reported by the `flutter doctor` command.
 
 ## Instructions
 
-1. **Determine the Host Operating System:**
-   **STOP AND ASK THE USER:** "Are you setting up this Flutter environment on a standard Debian/Ubuntu Linux distribution, or on a Chromebook (ChromeOS)?"
+**Interaction Rule:** Evaluate the current system context for the target OS type (Standard Linux vs. ChromeOS) and the current Flutter installation status. If the OS distribution is unknown or not Debian-based, ask the user for clarification before proceeding with `apt-get` commands.
 
-2. **Handle ChromeOS Prerequisites (Conditional):**
-   If the user indicates they are on a Chromebook:
-   Instruct the user to navigate to their ChromeOS Settings, turn on "Linux development environment", and ensure it is fully updated. 
-   **STOP AND ASK THE USER:** "Please confirm once Linux support is enabled and updated so we can proceed with the package installation."
+1. **Plan:** Determine the target environment (ChromeOS requires enabling Linux support first).
+2. **Update:** Refresh the local package index and upgrade existing packages to prevent dependency conflicts.
+3. **Execute:** Install the required core utilities and the Linux desktop toolchain.
+4. **Validate:** Run Flutter diagnostic commands to ensure the environment is correctly configured and devices are recognized.
 
-3. **Update System Packages:**
-   Execute the following command to refresh the package lists and upgrade existing packages:
-   ```bash
-   sudo apt-get update -y && sudo apt-get upgrade -y
-   ```
+## Decision Logic
 
-4. **Install Core Prerequisites:**
-   Install the base dependencies required for Flutter to operate and build on Linux:
-   ```bash
-   sudo apt-get install -y curl git unzip xz-utils zip libglu1-mesa
-   ```
+Use the following decision tree to guide the setup process:
 
-5. **Install Linux Desktop Toolchain:**
-   Install the specific C/C++ toolchain and GTK libraries required to compile Linux desktop applications:
-   ```bash
-   sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev
-   ```
+* **Is the target device a Chromebook?**
+  * **Yes:** Instruct the user to turn on Linux support in ChromeOS settings and ensure it is up to date. Proceed to package installation.
+  * **No:** Proceed directly to package installation.
+* **Are core utilities (`curl`, `git`, `unzip`) missing?**
+  * **Yes:** Include core utilities in the `apt-get install` command.
+* **Does `flutter doctor` report Linux toolchain issues?**
+  * **Yes:** Ensure `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev`, and `libstdc++-12-dev` are explicitly installed.
 
-6. **IDE Configuration Prompt:**
-   **STOP AND ASK THE USER:** "For the best experience, an IDE with Flutter support is recommended. Would you like me to provide the installation commands for Visual Studio Code or Android Studio?"
-   *   *If VS Code:* Provide the snap installation command: `sudo snap install --classic code`
-   *   *If Android Studio:* Provide the snap installation command: `sudo snap install android-studio --classic`
+## Best Practices
 
-7. **Validate the Environment:**
-   Run the Flutter diagnostic tool to verify the Linux toolchain and device availability:
-   ```bash
-   flutter doctor -v
-   flutter devices
-   ```
-   *Validate-and-Fix:* Analyze the output of `flutter doctor -v`. 
-   *   If the "Linux toolchain" section reports missing dependencies, parse the missing package names, construct a new `sudo apt-get install -y <packages>` command, and execute it.
-   *   If `flutter devices` does not list a `linux` platform device, verify that the `libgtk-3-dev` package was successfully installed and re-run the validation.
+* Always chain `apt-get update` and `apt-get upgrade` before installing new packages to ensure system consistency.
+* Use the `-y` flag in package manager commands to ensure deterministic, non-interactive execution.
+* Install a dedicated editor or IDE with Flutter support (e.g., Visual Studio Code) to maximize development efficiency.
+* Run `flutter doctor -v` after any environment change to verify the toolchain status.
+* Verify device connectivity by running `flutter devices` to ensure the `linux` platform is detected.
 
-## Constraints
-*   Do not include any external URLs, hyperlinks, or references to external documentation.
-*   Assume the user has `sudo` privileges and do not explain basic privilege escalation concepts.
-*   Do not explain what individual packages (e.g., `curl`, `cmake`) do; assume the user understands standard Linux development tools.
-*   Strictly use `apt-get` for package management to ensure non-interactive compatibility (`-y` flags must be present).
-*   All terminal commands must be enclosed in `bash` code blocks.
+## Examples
+
+### Gold Standard: Complete Ubuntu/Debian Setup Script
+
+Execute the following deterministic script to configure a Debian-based Linux environment for Flutter development.
+
+```bash
+#!/bin/bash
+
+# 1. Update and upgrade the package index
+sudo apt-get update -y && sudo apt-get upgrade -y
+
+# 2. Install core prerequisites and Linux desktop toolchain
+sudo apt-get install -y \
+  curl \
+  git \
+  unzip \
+  xz-utils \
+  zip \
+  libglu1-mesa \
+  clang \
+  cmake \
+  ninja-build \
+  pkg-config \
+  libgtk-3-dev \
+  libstdc++-12-dev
+
+# 3. Validate the Flutter toolchain installation
+flutter doctor -v
+
+# 4. Verify Linux device availability
+flutter devices
+```

@@ -3,215 +3,176 @@ name: "flutter-caching"
 description: "Cache data in a Flutter app"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 04 Mar 2026 18:37:11 GMT"
+  last_modified: "Wed, 11 Mar 2026 17:44:40 GMT"
 
 ---
-# flutter-caching-and-performance
+# Implementing-Caching-Strategies
 
-## Goal
-Implements advanced caching, offline-first data persistence, and performance optimization strategies in Flutter applications. Evaluates application requirements to select and integrate the appropriate local caching mechanism (in-memory, persistent, file system, or on-device databases). Configures Android-specific FlutterEngine caching to minimize initialization latency. Optimizes widget rendering, image caching, and scrolling performance while adhering to current Flutter API standards and avoiding expensive rendering operations.
+## When to Use
+*   The application requires offline-first capabilities to retain and display data without a network connection.
+*   The application needs to prevent users from waiting for data to load upon every app launch.
+*   The Android host application requires a pre-warmed `FlutterEngine` to eliminate UI initialization delays.
+*   The application renders complex images or heavy widget trees that benefit from memory, raster, or file system caching.
+*   The application needs to persist user session state (e.g., navigation stacks, scroll positions) across restarts.
 
 ## Instructions
 
-### 1. Evaluate and Select Caching Strategy (Decision Logic)
-Analyze the user's data retention requirements using the following decision tree to select the appropriate caching mechanism:
-*   **Is the data temporary and only needed for the current session?**
-    *   *Yes:* Use **In-memory caching**.
+**Interaction Rule:** Evaluate the current project context for [data size, persistence requirements, platform targets]. If missing, ask the user for clarification before proceeding with implementation.
+
+1.  **Determine the Caching Scope:** Identify whether the cache should be in-memory (ephemeral) or persistent (survives app restarts).
+2.  **Select the Storage Mechanism:** Use the Decision Logic below to pick the appropriate package or technique.
+3.  **Implement the Three-Step Cache Operation:** 
+    *   Check if the cache contains the desired data (Cache Hit).
+    *   If empty (Cache Miss), load the data from the remote source.
+    *   Return the value and update the cache.
+4.  **Implement Synchronization:** If using an offline-first approach, create a background synchronization task to push local changes to the remote server when connectivity is restored.
+5.  **Optimize UI Caching:** Use `const` constructors for leaf widgets and avoid overriding `operator ==`.
+
+## Decision Logic
+
+Evaluate the data type and requirements to select the correct caching strategy:
+
 *   **Is the data small, simple key-value pairs (e.g., user preferences)?**
-    *   *Yes:* Use **`shared_preferences`**.
-*   **Is the data large, relational, or requires complex querying?**
-    *   *Yes:* Use **On-device databases** (e.g., `sqflite`). Proceed to Step 3.
-*   **Is the data large binary files, custom documents, or JSON blobs?**
-    *   *Yes:* Use **File system caching** (`path_provider`). Proceed to Step 2.
-*   **Is the data network images?**
-    *   *Yes:* Use **Image caching** (`cached_network_image` or custom `ImageCache`). Proceed to Step 6.
-*   **Is the goal to reduce Android Flutter UI warm-up time?**
-    *   *Yes:* Use **FlutterEngine caching**. Proceed to Step 5.
+    *   Yes -> Use `shared_preferences`.
+*   **Is the data large, structured, or relational?**
+    *   Yes -> Use an On-device database (e.g., `sqflite`, `drift`, `hive`, `isar`).
+*   **Is the data raw files or blobs (e.g., downloaded PDFs)?**
+    *   Yes -> Use `path_provider` to store in the Documents or Temporary directory.
+*   **Are you caching network images?**
+    *   Yes -> Use `cached_network_image` to handle file-system image caching automatically.
+*   **Are you embedding Flutter into an existing Android app?**
+    *   Yes -> Use `FlutterEngineCache` to pre-warm and cache the engine.
 
-**STOP AND ASK THE USER:** "Based on your requirements, which data type and size are we handling? Should I implement SQLite, File System caching, or a different strategy?"
+## Best Practices
 
-### 2. Implement File System Caching
-When `shared_preferences` is insufficient for larger data, use `path_provider` and `dart:io` to persist data to the device's hard drive.
+*   **Enforce the Single Source of Truth:** Use the Repository pattern to combine local and remote data sources. The UI should only interact with the Repository.
+*   **Prevent SQL Injection:** When using SQLite, always use `whereArgs` to pass arguments to a `where` statement. Never use string interpolation for SQL queries.
+*   **Avoid `operator ==` Overrides on Widgets:** Rely on caching widgets via `const` constructors. Overriding `operator ==` on Widgets leads to O(N²) performance degradation during the build phase.
+*   **Manage Image Cache Memory:** Raster cache entries are expensive to construct and consume significant GPU memory. Cache images only when absolutely necessary. If manually managing `ImageCache`, monitor and adjust `maxByteSize` to prevent memory bloat.
+*   **Use Explicit Scroll Caching:** When caching scroll extents in viewports, use the explicit `ScrollCacheExtent.pixels(value)` or `ScrollCacheExtent.viewport(value)` rather than the deprecated `cacheExtent` double.
+*   **Handle Background Sync Safely:** Only perform background synchronization tasks when the network is available and the device is not running low on battery.
+
+## Examples
+
+### Gold Standard: Three-Step Offline-First Repository
+This example demonstrates the standard Check -> Load -> Return caching pattern using a local database as the fallback/cache.
 
 ```dart
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+// lib/repositories/user_profile_repository.dart
+import 'dart:async';
+import '../services/api_client_service.dart';
+import '../services/database_service.dart';
+import '../models/user_profile.dart';
 
-class FileCacheService {
-  Future<String> get _localPath async {
-    // Use getTemporaryDirectory() for system-cleared cache
-    // Use getApplicationDocumentsDirectory() for persistent data
-    final directory = await getApplicationDocumentsDirectory();
-    return directory.path;
-  }
+class UserProfileRepository {
+  final ApiClientService _apiClient;
+  final DatabaseService _databaseService;
 
-  Future<File> get _localFile async {
-    final path = await _localPath;
-    return File('$path/cached_data.json');
-  }
+  UserProfileRepository(this._apiClient, this._databaseService);
 
-  Future<File> writeData(String data) async {
-    final file = await _localFile;
-    return file.writeAsString(data);
-  }
+  /// Implements the 3-step cache operation using a Stream
+  Stream<UserProfile> getUserProfile() async* {
+    // Step 1: Check cache (Local Database)
+    final localProfile = await _databaseService.fetchUserProfile();
+    
+    if (localProfile != null) {
+      // Cache Hit: Yield local data immediately for fast UI rendering
+      yield localProfile;
+    }
 
-  Future<String?> readData() async {
     try {
-      final file = await _localFile;
-      return await file.readAsString();
+      // Step 2: Load data from remote source
+      final remoteProfile = await _apiClient.getUserProfile();
+      
+      // Step 3: Update cache and return new value
+      await _databaseService.updateUserProfile(remoteProfile);
+      yield remoteProfile;
     } catch (e) {
-      return null; // Cache miss
+      // On Cache Miss + Network Failure, throw if no local data exists
+      if (localProfile == null) {
+        throw Exception('User profile not found locally and network request failed.');
+      }
     }
   }
 }
 ```
 
-### 3. Implement SQLite Persistence
-For large datasets requiring improved performance over simple files, implement an on-device database using `sqflite`.
+### Gold Standard: SQLite Local Caching
+This example demonstrates safe local caching using SQLite, adhering to SQL injection prevention best practices.
 
 ```dart
-import 'package:path/path.dart';
+// lib/services/database_service.dart
 import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+import '../models/dog.dart';
 
 class DatabaseService {
   late Database _database;
 
-  Future<void> initDB() async {
+  Future<void> init() async {
     _database = await openDatabase(
       join(await getDatabasesPath(), 'app_cache.db'),
       onCreate: (db, version) {
         return db.execute(
-          'CREATE TABLE cache_data(id INTEGER PRIMARY KEY, key TEXT, payload TEXT)',
+          'CREATE TABLE dogs(id INTEGER PRIMARY KEY, name TEXT, age INTEGER)',
         );
       },
       version: 1,
     );
   }
 
-  Future<void> insertCache(String key, String payload) async {
+  Future<void> cacheDog(Dog dog) async {
     await _database.insert(
-      'cache_data',
-      {'key': key, 'payload': payload},
+      'dogs',
+      dog.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
-  Future<String?> getCache(String key) async {
-    final List<Map<String, Object?>> maps = await _database.query(
-      'cache_data',
-      where: 'key = ?',
-      whereArgs: [key], // MUST use whereArgs to prevent SQL injection
+  Future<void> updateCachedDog(Dog dog) async {
+    await _database.update(
+      'dogs',
+      dog.toMap(),
+      where: 'id = ?', // BEST PRACTICE: Use whereArgs to prevent SQL injection
+      whereArgs: [dog.id],
     );
-    if (maps.isNotEmpty) {
-      return maps.first['payload'] as String;
-    }
-    return null;
   }
 }
 ```
 
-### 4. Implement Offline-First Repository (Stream-based)
-Combine local caching and remote fetching. Yield the cached data first (cache hit), then fetch from the network, update the cache, and yield the fresh data.
+### Gold Standard: Android FlutterEngine Caching
+This example demonstrates how to pre-warm and cache a `FlutterEngine` in an Android host application to eliminate initialization latency.
 
-```dart
-Stream<UserProfile> getUserProfile() async* {
-  // 1. Check local cache
-  final localData = await _databaseService.getCache('user_profile');
-  if (localData != null) {
-    yield UserProfile.fromJson(localData);
-  }
-
-  // 2. Fetch remote data
-  try {
-    final remoteData = await _apiClient.fetchUserProfile();
-    // 3. Update cache
-    await _databaseService.insertCache('user_profile', remoteData.toJson());
-    // 4. Yield fresh data
-    yield remoteData;
-  } catch (e) {
-    // Handle network failure; local data has already been yielded
-  }
-}
-```
-
-### 5. Implement FlutterEngine Caching (Android)
-To minimize Flutter's initialization time when adding Flutter screens to an Android app, pre-warm and cache the `FlutterEngine`.
-
-**Pre-warm in Application class (Kotlin):**
 ```kotlin
+// android/app/src/main/kotlin/com/example/MyApplication.kt
+package com.example.hostapp
+
+import android.app.Application
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
+import io.flutter.embedding.engine.dart.DartExecutor
+
 class MyApplication : Application() {
   lateinit var flutterEngine : FlutterEngine
+
   override fun onCreate() {
     super.onCreate()
+
+    // Instantiate a FlutterEngine.
     flutterEngine = FlutterEngine(this)
-    // Optional: Configure initial route before executing entrypoint
+
+    // Configure an initial route.
     flutterEngine.navigationChannel.setInitialRoute("/cached_route");
+
+    // Start executing Dart code to pre-warm the FlutterEngine.
     flutterEngine.dartExecutor.executeDartEntrypoint(
       DartExecutor.DartEntrypoint.createDefault()
     )
-    FlutterEngineCache.getInstance().put("my_engine_id", flutterEngine)
+
+    // Cache the FlutterEngine to be used by FlutterActivity or FlutterFragment.
+    FlutterEngineCache
+      .getInstance()
+      .put("my_cached_engine_id", flutterEngine)
   }
 }
 ```
-
-**Consume in Activity/Fragment (Kotlin):**
-```kotlin
-// For Activity
-startActivity(
-  FlutterActivity
-    .withCachedEngine("my_engine_id")
-    .backgroundMode(FlutterActivityLaunchConfigs.BackgroundMode.transparent)
-    .build(this)
-)
-
-// For Fragment
-val flutterFragment = FlutterFragment.withCachedEngine("my_engine_id")
-    .renderMode(FlutterView.RenderMode.texture)
-    .shouldAttachEngineToActivity(false)
-    .build()
-```
-
-### 6. Optimize Image and Scroll Caching
-Apply strict constraints to image caching and scrolling to prevent GPU memory bloat and layout passes.
-
-**ImageCache Validation:**
-Verify cache hits without triggering loads using `containsKey`.
-```dart
-class CustomImageCache extends ImageCache {
-  @override
-  bool containsKey(Object key) {
-    // Check if cache is tracking this key
-    return super.containsKey(key); 
-  }
-}
-```
-
-**ScrollCacheExtent Implementation:**
-Use the strongly-typed `ScrollCacheExtent` object for scrolling widgets (replaces deprecated `cacheExtent` and `cacheExtentStyle`).
-```dart
-ListView(
-  // Use ScrollCacheExtent.pixels for pixel-based caching
-  scrollCacheExtent: const ScrollCacheExtent.pixels(500.0),
-  children: [ ... ],
-)
-
-Viewport(
-  // Use ScrollCacheExtent.viewport for fraction-based caching
-  scrollCacheExtent: const ScrollCacheExtent.viewport(0.5),
-  slivers: [ ... ],
-)
-```
-
-### 7. Validate-and-Fix Performance
-Review the generated UI code for performance pitfalls.
-1.  **Check for `saveLayer()` triggers:** Ensure `Opacity`, `ShaderMask`, `ColorFilter`, and `Clip.antiAliasWithSaveLayer` are only used when absolutely necessary. Replace `Opacity` with semitransparent colors or `FadeInImage` where possible.
-2.  **Check `operator ==` overrides:** Ensure `operator ==` is NOT overridden on `Widget` objects unless they are leaf widgets whose properties rarely change.
-3.  **Check Intrinsic Passes:** Ensure `ListView` and `GridView` use lazy builder methods (`ListView.builder`) and avoid intrinsic layout passes by setting fixed sizes where possible.
-
-## Constraints
-*   **SQL Injection Prevention:** ALWAYS use `whereArgs` in `sqflite` queries. NEVER use string interpolation for SQL `where` clauses.
-*   **Engine Lifecycle:** When using a cached `FlutterEngine` in Android, remember it outlives the `Activity`/`Fragment`. Explicitly call `FlutterEngine.destroy()` when it is no longer needed to clear resources.
-*   **Image Caching Limits:** Raster cache entries are expensive to construct and use significant GPU memory. Only cache images when absolutely necessary. Do not artificially inflate `ImageCache.maxByteSize`.
-*   **Widget Equality:** Do not override `operator ==` on widgets to force caching, as this degrades performance to O(N²). Rely on `const` constructors instead.
-*   **Scroll Extents:** NEVER use the deprecated `cacheExtent` (double) or `cacheExtentStyle`. ALWAYS use the `ScrollCacheExtent` object.
-*   **Web Workers:** If targeting Flutter Web, remember that Dart `isolates` are not supported. Do not generate isolate-based background parsing for web targets.

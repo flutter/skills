@@ -3,225 +3,169 @@ name: "flutter-native-interop"
 description: "Interoperate with native APIs in a Flutter app on Android, iOS, and the web"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 04 Mar 2026 19:26:40 GMT"
+  last_modified: "Wed, 11 Mar 2026 17:46:06 GMT"
 
 ---
-# Flutter Platform Integration
+# Integrating-Flutter-Platforms
 
-## Goal
-Integrates Flutter applications with platform-specific code and native features across Android, iOS, and Web environments. Determines the optimal interoperability strategy (FFI, Platform Channels, Platform Views, or JS Interop) and implements the necessary Dart and native code bindings while adhering to thread safety, WebAssembly (Wasm) compatibility, and modern build hook standards.
+## When to Use
+* The agent needs to call native C/C++, Kotlin, Java, Swift, or Objective-C code from Dart.
+* The agent needs to embed native Android/iOS views or HTML elements into a Flutter widget tree.
+* The agent is configuring WebAssembly (Wasm) or JS interop for Flutter Web.
+* The agent is adding Flutter to an existing native application (add-to-app) using multi-engine or multi-view capabilities.
 
 ## Instructions
 
-### 1. Determine Integration Strategy (Decision Logic)
-Evaluate the user's requirements using the following decision tree to select the correct integration path:
+**Interaction Rule:** Evaluate the current project context for target platforms (Android, iOS, Web, macOS, Windows, Linux), required native APIs, and existing plugin availability. If the required native API details, target platforms, or architectural constraints are missing, ask the user for clarification before proceeding with implementation.
 
-*   **Scenario A: Calling native C/C++ code.**
-    *   *Action:* Use `dart:ffi` with the `package_ffi` template and build hooks.
-    *   *Exception:* If accessing the Flutter Plugin API or requiring static linking on iOS, use the legacy `plugin_ffi` template.
-*   **Scenario B: Calling OS-specific APIs (Java/Kotlin for Android, Swift/Obj-C for iOS).**
-    *   *Action:* Use Platform Channels (`MethodChannel`) or the `pigeon` package for type-safe code generation.
-*   **Scenario C: Embedding native UI components into the Flutter widget tree.**
-    *   *Action:* Use Platform Views (`AndroidView` / `AndroidViewSurface` for Android, `UiKitView` for iOS).
-*   **Scenario D: Web integration and JavaScript APIs.**
-    *   *Action:* Use `package:web` and `dart:js_interop` (Wasm-compatible). Use `HtmlElementView` for embedding web content.
+1. **Plan:** 
+   * Identify the target platforms and the specific native functionality required.
+   * Consult the "Decision Logic" section to select the appropriate integration mechanism (FFI, Platform Channels, Platform Views, or Web Interop).
+   * Determine if the integration should be a standalone package/plugin or embedded within the app codebase.
+2. **Execute:**
+   * Generate the necessary boilerplate using `flutter create --template=package_ffi` or `plugin`.
+   * Implement the Dart interface (using `dart:ffi`, `MethodChannel`, or `Pigeon`).
+   * Implement the native host code (C/C++, Kotlin, Swift, JS).
+   * Wire up the build hooks or platform-specific build files (e.g., `hook/build.dart`, `build.gradle`, `Podspec`).
 
-**STOP AND ASK THE USER:** "Which platform(s) are you targeting, and what specific native functionality or UI component do you need to integrate?"
+## Decision Logic
 
-### 2. Implement C/C++ Interop (`dart:ffi`)
-If Scenario A is selected, implement the modern FFI architecture using build hooks (Flutter 3.38+).
+Use the following logic tree to determine the correct integration strategy:
 
-1.  Generate the package:
-    ```bash
-    flutter create --template=package_ffi native_add
-    ```
-2.  Configure the build hook (`hook/build.dart`) to compile the native code:
-    ```dart
-    import 'package:hooks/hooks.dart';
-    import 'package:native_toolchain_c/native_toolchain_c.dart';
+* **Requirement: Call C/C++ Code**
+  * *Condition:* Need access to the Flutter Plugin API, Google Play services runtime, or static linking?
+    * **Action:** Use the legacy `plugin_ffi` template.
+  * *Condition:* Standard C/C++ interop?
+    * **Action:** Use the `package_ffi` template with build hooks (Recommended since Flutter 3.38).
+* **Requirement: Call Platform-Specific APIs (Kotlin, Java, Swift, Obj-C)**
+  * *Condition:* Complex data structures or strict type-safety required?
+    * **Action:** Use the `Pigeon` package to generate type-safe interfaces.
+  * *Condition:* Simple, infrequent message passing?
+    * **Action:** Use `MethodChannel` / `FlutterMethodChannel`.
+* **Requirement: Display Native UI Components**
+  * *Condition:* Android target?
+    * **Action:** Use `AndroidView` (Texture Layer Hybrid Composition) for best Flutter rendering performance, or `PlatformViewLink` (Hybrid Composition) for best native view fidelity.
+  * *Condition:* iOS target?
+    * **Action:** Use `UiKitView`.
+  * *Condition:* Web target?
+    * **Action:** Use `HtmlElementView.fromTagName` or `HtmlElementView` with `registerViewFactory`.
+* **Requirement: Web Integration**
+  * *Condition:* Need JS Interop and Wasm support?
+    * **Action:** Use `package:web` and `dart:js_interop`. Do NOT use `dart:html` or `package:js`.
+  * *Condition:* Targeting iOS browsers?
+    * **Action:** Fall back to JS compilation. WasmGC is not supported on iOS browsers due to WebKit limitations.
 
-    void main(List<String> args) async {
-      await build(args, (config, output) async {
-        final builder = CBuilder.library(
-          name: 'native_add',
-          assetId: 'native_add/src/native_add.dart',
-          sources: ['src/native_add.c'],
-        );
-        await builder.run(config: config, output: output);
-      });
-    }
-    ```
-3.  Bind the native function in Dart (`lib/src/native_add.dart`):
-    ```dart
-    import 'dart:ffi';
+## Best Practices
 
-    @Native<Int32 Function(Int32, Int32)>()
-    external int sum(int a, int b);
-    ```
+* **FFI & Native Code:**
+  * Mark C++ symbols with `extern "C" __attribute__((visibility("default"))) __attribute__((used))` to prevent the linker from discarding symbols during link-time optimization.
+  * Resolve dynamically linked libraries using `DynamicLibrary.process` when they are automatically loaded at app startup.
+  * Use `hook/build.dart` for compiling native code in `package_ffi` to avoid writing OS-specific build files (CMake, build.gradle, Podspec).
+* **Platform Channels:**
+  * Always invoke channel methods on the platform's main thread (UI thread). 
+  * If executing channel handlers on a background thread, use the Task Queue API (`makeBackgroundTaskQueue()`).
+  * Handle `PlatformException` gracefully in Dart to prevent app crashes when native calls fail.
+* **Web & Wasm:**
+  * Migrate all web-specific code to `package:web` and `dart:js_interop` to ensure compatibility with WebAssembly compilation.
+  * Ensure the web server sends `Cross-Origin-Embedder-Policy: credentialless` and `Cross-Origin-Opener-Policy: same-origin` headers to enable multi-threading in Wasm.
+* **Add-to-App:**
+  * Use multi-engine on Android and iOS to allow multiple isolated Flutter instances.
+  * Use multi-view on the web to allow multiple `FlutterViews` to share objects within a single Dart program.
 
-### 3. Implement Platform Channels (MethodChannel)
-If Scenario B is selected, implement asynchronous message passing.
+## Examples
 
-1.  **Dart Client Implementation:**
-    ```dart
-    import 'package:flutter/services.dart';
+### Gold Standard: FFI with Build Hooks (`package_ffi`)
 
-    class NativeApi {
-      static const platform = MethodChannel('com.example.app/channel');
+**hook/build.dart**
+```dart
+import 'package:native_toolchain_c/native_toolchain_c.dart';
+import 'package:logging/logging.dart';
 
-      Future<String> getNativeData() async {
-        try {
-          final String result = await platform.invokeMethod('getData');
-          return result;
-        } on PlatformException catch (e) {
-          return "Error: '${e.message}'.";
-        }
-      }
-    }
-    ```
-2.  **Android Host Implementation (Kotlin):**
-    ```kotlin
-    import androidx.annotation.NonNull
-    import io.flutter.embedding.android.FlutterActivity
-    import io.flutter.embedding.engine.FlutterEngine
-    import io.flutter.plugin.common.MethodChannel
+void main(List<String> args) async {
+  final buildConfig = await BuildConfig.fromArgs(args);
+  final buildOutput = BuildOutput();
+  
+  final cbuilder = CBuilder.library(
+    name: 'native_add',
+    assetId: 'package:native_add/native_add.dart',
+    sources: ['src/native_add.c'],
+  );
+  
+  await cbuilder.run(
+    buildConfig: buildConfig,
+    buildOutput: buildOutput,
+    logger: Logger('')..onRecord.listen((record) => print(record.message)),
+  );
+  
+  await buildOutput.writeToFile(outDir: buildConfig.outDir);
+}
+```
 
-    class MainActivity: FlutterActivity() {
-      private val CHANNEL = "com.example.app/channel"
+**lib/native_add.dart**
+```dart
+import 'dart:ffi';
 
-      override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
+@Native<Int32 Function(Int32, Int32)>()
+external int sum(int a, int b);
+```
+
+### Gold Standard: Type-Safe Platform Channels with Pigeon
+
+**pigeons/messages.dart**
+```dart
+import 'package:pigeon/pigeon.dart';
+
+class BatteryInfo {
+  final int level;
+  final String status;
+
+  BatteryInfo({required this.level, required this.status});
+}
+
+@HostApi()
+abstract class BatteryApi {
+  BatteryInfo getBatteryInfo();
+}
+```
+
+**android/app/src/main/kotlin/com/example/app/MainActivity.kt**
+```kotlin
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+
+class MainActivity: FlutterActivity() {
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-          if (call.method == "getData") {
-            result.success("Data from Android")
-          } else {
-            result.notImplemented()
-          }
-        }
-      }
+        BatteryApi.setup(flutterEngine.dartExecutor.binaryMessenger, BatteryApiImpl(context))
     }
-    ```
-3.  **iOS Host Implementation (Swift):**
-    ```swift
-    import Flutter
-    import UIKit
+}
 
-    @UIApplicationMain
-    @objc class AppDelegate: FlutterAppDelegate {
-      override func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-      ) -> Bool {
-        let controller : FlutterViewController = window?.rootViewController as! FlutterViewController
-        let channel = FlutterMethodChannel(name: "com.example.app/channel", binaryMessenger: controller.binaryMessenger)
-        
-        channel.setMethodCallHandler({
-          (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
-          if call.method == "getData" {
-            result("Data from iOS")
-          } else {
-            result(FlutterMethodNotImplemented)
-          }
-        })
-
-        GeneratedPluginRegistrant.register(with: self)
-        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-      }
+class BatteryApiImpl(private val context: Context) : BatteryApi {
+    override fun getBatteryInfo(): BatteryInfo {
+        // Implement native battery logic here
+        return BatteryInfo(100, "Charging")
     }
-    ```
+}
+```
 
-### 4. Implement Platform Views
-If Scenario C is selected, embed native views.
+### Gold Standard: Web JS Interop (Wasm Compatible)
 
-1.  **Dart Implementation (iOS Example):**
-    ```dart
-    import 'package:flutter/material.dart';
-    import 'package:flutter/services.dart';
+**lib/web_interop.dart**
+```dart
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
 
-    Widget buildNativeView() {
-      const String viewType = '<platform-view-type>';
-      final Map<String, dynamic> creationParams = <String, dynamic>{};
+@JS('window.alert')
+external void showAlert(JSString message);
 
-      return UiKitView(
-        viewType: viewType,
-        layoutDirection: TextDirection.ltr,
-        creationParams: creationParams,
-        creationParamsCodec: const StandardMessageCodec(),
-      );
-    }
-    ```
-2.  **iOS Factory Implementation (Swift):**
-    ```swift
-    import Flutter
-    import UIKit
+void triggerAlert(String message) {
+  // Use .toJS to convert Dart strings to JSStrings
+  showAlert(message.toJS);
+}
 
-    class FLNativeViewFactory: NSObject, FlutterPlatformViewFactory {
-        private var messenger: FlutterBinaryMessenger
-
-        init(messenger: FlutterBinaryMessenger) {
-            self.messenger = messenger
-            super.init()
-        }
-
-        func create(withFrame frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?) -> FlutterPlatformView {
-            return FLNativeView(frame: frame, viewIdentifier: viewId, arguments: args, binaryMessenger: messenger)
-        }
-
-        public func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
-              return FlutterStandardMessageCodec.sharedInstance()
-        }
-    }
-
-    class FLNativeView: NSObject, FlutterPlatformView {
-        private var _view: UIView
-
-        init(frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?, binaryMessenger messenger: FlutterBinaryMessenger?) {
-            _view = UIView()
-            super.init()
-            _view.backgroundColor = UIColor.blue
-        }
-
-        func view() -> UIView { return _view }
-    }
-    ```
-    *Validate-and-Fix:* Ensure the factory is registered in `AppDelegate.swift` using `registrar.register(factory, withId: "<platform-view-type>")`.
-
-### 5. Implement Web Integration (Wasm & JS Interop)
-If Scenario D is selected, implement Wasm-compatible web integrations.
-
-1.  **JS Interop (Dart):**
-    ```dart
-    import 'dart:js_interop';
-    import 'package:web/web.dart' as web;
-
-    @JS('console.log')
-    external void log(JSAny? value);
-
-    void manipulateDOM() {
-      final div = web.document.createElement('div') as web.HTMLDivElement;
-      div.text = "Hello from Wasm-compatible Dart!";
-      web.document.body?.append(div);
-      log("DOM updated".toJS);
-    }
-    ```
-2.  **Embedding HTML Elements:**
-    ```dart
-    import 'package:flutter/widgets.dart';
-    import 'package:web/web.dart' as web;
-
-    Widget buildVideoElement() {
-      return HtmlElementView.fromTag('video', onElementCreated: (Object video) {
-        final videoElement = video as web.HTMLVideoElement;
-        videoElement.src = 'https://example.com/video.mp4';
-        videoElement.style.width = '100%';
-        videoElement.style.height = '100%';
-      });
-    }
-    ```
-
-## Constraints
-*   **Thread Safety:** Whenever you invoke a channel method on the platform side destined for Flutter, you MUST invoke it on the platform's main/UI thread. Use `Handler(Looper.getMainLooper()).post` (Android) or `DispatchQueue.main.async` (iOS) if jumping from a background thread.
-*   **WebAssembly Compatibility:** DO NOT use `dart:html`, `dart:js`, or `package:js`. You MUST use `package:web` and `dart:js_interop` to ensure the app compiles to Wasm.
-*   **Wasm iOS Limitation:** Flutter compiled to Wasm currently CANNOT run on the iOS version of any browser due to WebKit limitations. Ensure fallback to JS compilation is maintained.
-*   **FFI Naming:** When implementing `build.dart` hooks for Apple platforms, dynamic libraries MUST have consistent filenames across all target architectures (e.g., do not use `lib_arm64.dylib`).
-*   **Platform View Performance:** Handling `SurfaceView` on Android via Platform Views is problematic and should be avoided when possible. Prefer `TextureLayerHybridComposition` for better Flutter rendering performance.
+void logUrl() {
+  // Use package:web for DOM interactions
+  final web.Window window = web.window;
+  print(window.location.href);
+}
+```

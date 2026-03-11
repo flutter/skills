@@ -3,180 +3,86 @@ name: "flutter-platform-views"
 description: "Add a native view into your Flutter app"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 04 Mar 2026 18:59:25 GMT"
+  last_modified: "Wed, 11 Mar 2026 17:45:21 GMT"
 
 ---
-# flutter-platform-views-and-web-embedding
+# Integrating-Platform-Views
 
-## Goal
-Guides developers through implementing Flutter Platform Views for Android, iOS, and macOS, as well as embedding Flutter into existing web applications. Assumes the user has a configured Flutter environment and is comfortable with Dart, JavaScript, and the relevant native platform languages (Kotlin, Swift).
+## When to Use
+* The application requires embedding native OS views (e.g., Android `View`, iOS `UIView`, macOS `NSView`, or HTML elements) directly into the Flutter widget tree.
+* The project needs to integrate native SDKs that provide UI components (e.g., Google Maps, native WebViews, specialized camera previews).
+* The application is a web app requiring multi-view embedding into an existing HTML DOM.
 
 ## Instructions
 
-### 1. Determine the Target Platform and Embedding Strategy (Decision Logic)
-Before writing code, you must determine the target platform and the specific embedding strategy required by the user.
+**Interaction Rule:** Evaluate the current project context for target platforms (Android, iOS, macOS, Web) and specific native view requirements. If the target platform, minimum SDK version, or performance constraints (e.g., heavy animation vs. high-fidelity native UI) are missing, ask the user for clarification before proceeding with implementation.
 
-**STOP AND ASK THE USER:**
-"Which platform are you targeting for native view embedding?
-1. Android (Requires choosing between Hybrid Composition or Texture Layer)
-2. iOS (Hybrid Composition only)
-3. macOS (Hybrid Composition only, gesture support limited)
-4. Web (Requires choosing between Full Page mode or Embedded/Multi-view mode)"
+1. **Analyze Platform Requirements:** Determine the target platform and select the appropriate composition strategy using the Decision Logic below.
+2. **Implement the Dart Interface:** Create the Dart-side widget using `AndroidView`, `UiKitView`, `AppKitView`, or `ViewCollection` (for Web).
+3. **Implement the Native Factory:** Write the platform-side factory and view classes (Kotlin/Java, Swift/Obj-C, or JavaScript).
+4. **Register the View:** Register the platform view factory with the Flutter engine on the native side.
+5. **Optimize Performance:** Apply performance mitigations, such as placeholder textures, during heavy Dart-side animations.
 
-**Decision Tree:**
-*   **If Android:** Ask the user: "Do you prioritize native Android view fidelity (Hybrid Composition) or Flutter rendering performance (Texture Layer)?"
-*   **If Web:** Ask the user: "Are you taking over the full page, or embedding Flutter into specific HTML elements (Embedded/Multi-view mode)?"
+## Decision Logic
 
-### 2. Implement Android Platform Views
-Based on the user's choice in Step 1, implement the Dart and Kotlin sides.
+Use the following decision tree to determine the correct Platform View implementation strategy:
 
-**Dart Implementation:**
-If the user chose **Hybrid Composition** (Best fidelity, lower Flutter FPS):
-```dart
-import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
+* **Is the target platform Android?** (Requires API 23+)
+  * *Does the app require the best performance and fidelity for the native Android view (e.g., Google Maps)?* -> Use **Hybrid Composition** (`PlatformViewLink`, `AndroidViewSurface`). Note: This may lower overall Flutter FPS.
+  * *Does the app require the best performance for Flutter rendering and transformations?* -> Use **Texture Layer** (`AndroidView`). Note: Quick scrolling may be janky, and `SurfaceView` is problematic.
+* **Is the target platform iOS?**
+  * -> Use **Hybrid Composition** (`UiKitView`).
+* **Is the target platform macOS?**
+  * -> Use **Hybrid Composition** (`AppKitView`). *Warning: Gesture support is not fully functional in the current release.*
+* **Is the target platform Web?**
+  * *Does Flutter control the entire browser viewport?* -> Use **Full Page Mode** (default).
+  * *Is Flutter being injected into specific HTML elements of an existing web app?* -> Use **Embedded Mode (Multi-view)**.
 
-Widget buildHybridAndroidView(BuildContext context, String viewType, Map<String, dynamic> creationParams) {
-  return PlatformViewLink(
-    viewType: viewType,
-    surfaceFactory: (context, controller) {
-      return AndroidViewSurface(
-        controller: controller as AndroidViewController,
-        gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
-        hitTestBehavior: PlatformViewHitTestBehavior.opaque,
-      );
-    },
-    onCreatePlatformView: (params) {
-      return PlatformViewsService.initSurfaceAndroidView(
-        id: params.id,
-        viewType: viewType,
-        layoutDirection: TextDirection.ltr,
-        creationParams: creationParams,
-        creationParamsCodec: const StandardMessageCodec(),
-        onFocus: () {
-          params.onFocusChanged(true);
-        },
-      )
-        ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
-        ..create();
-    },
-  );
-}
-```
+## Best Practices
 
-If the user chose **Texture Layer** (Best Flutter FPS, janky quick scrolling):
+* **Mitigate Animation Jank:** Render a screenshot of the native view as a placeholder texture during heavy Dart animations to prevent performance degradation caused by thread synchronization.
+* **Avoid SurfaceViews on Android:** Avoid `SurfaceView` when using Texture Layer composition. It forces the view into a virtual display, breaking accessibility and text magnifiers.
+* **Invalidate Android Views Manually:** Call `invalidate()` manually on Android views like `SurfaceView` and `SurfaceTexture` when their content changes, as they do not invalidate themselves automatically.
+* **Respect iOS Composition Limits:** Do not wrap iOS Platform Views in `ShaderMask` or `ColorFiltered` widgets, as they are not supported. Use `BackdropFilter` with caution due to known limitations.
+* **Use runWidget for Web Multi-view:** Replace `runApp` with `runWidget` in `main.dart` when using Web Embedded Mode. `runApp` assumes an `implicitView` exists, which will throw a null error in multi-view mode.
+
+## Examples
+
+### Gold Standard: Android Texture Layer (Dart Side)
+Use this pattern for standard Android platform views prioritizing Flutter rendering performance.
+
 ```dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-Widget buildTextureAndroidView(BuildContext context, String viewType, Map<String, dynamic> creationParams) {
-  return AndroidView(
-    viewType: viewType,
-    layoutDirection: TextDirection.ltr,
-    creationParams: creationParams,
-    creationParamsCodec: const StandardMessageCodec(),
-  );
+class CustomAndroidView extends StatelessWidget {
+  const CustomAndroidView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const String viewType = 'com.example.app/custom_native_view';
+    final Map<String, dynamic> creationParams = <String, dynamic>{
+      'initialData': 'Hello from Dart',
+    };
+
+    return AndroidView(
+      viewType: viewType,
+      layoutDirection: TextDirection.ltr,
+      creationParams: creationParams,
+      creationParamsCodec: const StandardMessageCodec(),
+    );
+  }
 }
 ```
 
-**Kotlin Implementation (Platform Side):**
-Create the View, the Factory, and register it in the `MainActivity`.
-```kotlin
-package dev.flutter.example
+### Gold Standard: iOS Native View Factory (Swift)
+Use this pattern to register and render a native `UIView` in iOS.
 
-import android.content.Context
-import android.graphics.Color
-import android.view.View
-import android.widget.TextView
-import io.flutter.embedding.android.FlutterActivity
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.StandardMessageCodec
-import io.flutter.plugin.platform.PlatformView
-import io.flutter.plugin.platform.PlatformViewFactory
-
-// 1. Define the View
-internal class NativeView(context: Context, id: Int, creationParams: Map<String?, Any?>?) : PlatformView {
-    private val textView: TextView = TextView(context).apply {
-        textSize = 72f
-        setBackgroundColor(Color.rgb(255, 255, 255))
-        text = "Rendered on a native Android view (id: $id)"
-    }
-    override fun getView(): View = textView
-    override fun dispose() {}
-}
-
-// 2. Define the Factory
-class NativeViewFactory : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
-    override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
-        val creationParams = args as Map<String?, Any?>?
-        return NativeView(context, viewId, creationParams)
-    }
-}
-
-// 3. Register in MainActivity
-class MainActivity : FlutterActivity() {
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
-        flutterEngine
-            .platformViewsController
-            .registry
-            .registerViewFactory("<platform-view-type>", NativeViewFactory())
-    }
-}
-```
-*Validate-and-Fix:* If the user is embedding a `SurfaceView` or `SurfaceTexture`, instruct them to manually call `invalidate()` on the view when content changes, as they do not invalidate themselves automatically.
-
-### 3. Implement iOS Platform Views
-iOS uses Hybrid Composition exclusively.
-
-**Dart Implementation:**
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
-Widget buildIosView(BuildContext context, String viewType, Map<String, dynamic> creationParams) {
-  return UiKitView(
-    viewType: viewType,
-    layoutDirection: TextDirection.ltr,
-    creationParams: creationParams,
-    creationParamsCodec: const StandardMessageCodec(),
-  );
-}
-```
-
-**Swift Implementation (Platform Side):**
 ```swift
 import Flutter
 import UIKit
 
-// 1. Define the View
-class FLNativeView: NSObject, FlutterPlatformView {
-    private var _view: UIView
-
-    init(frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?, binaryMessenger messenger: FlutterBinaryMessenger?) {
-        _view = UIView()
-        super.init()
-        createNativeView(view: _view)
-    }
-
-    func view() -> UIView { return _view }
-
-    func createNativeView(view _view: UIView){
-        _view.backgroundColor = UIColor.blue
-        let nativeLabel = UILabel()
-        nativeLabel.text = "Native text from iOS"
-        nativeLabel.textColor = UIColor.white
-        nativeLabel.textAlignment = .center
-        nativeLabel.frame = CGRect(x: 0, y: 0, width: 180, height: 48.0)
-        _view.addSubview(nativeLabel)
-    }
-}
-
-// 2. Define the Factory
-class FLNativeViewFactory: NSObject, FlutterPlatformViewFactory {
+class CustomNativeViewFactory: NSObject, FlutterPlatformViewFactory {
     private var messenger: FlutterBinaryMessenger
 
     init(messenger: FlutterBinaryMessenger) {
@@ -184,8 +90,17 @@ class FLNativeViewFactory: NSObject, FlutterPlatformViewFactory {
         super.init()
     }
 
-    func create(withFrame frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?) -> FlutterPlatformView {
-        return FLNativeView(frame: frame, viewIdentifier: viewId, arguments: args, binaryMessenger: messenger)
+    func create(
+        withFrame frame: CGRect,
+        viewIdentifier viewId: Int64,
+        arguments args: Any?
+    ) -> FlutterPlatformView {
+        return CustomNativeView(
+            frame: frame,
+            viewIdentifier: viewId,
+            arguments: args,
+            binaryMessenger: messenger
+        )
     }
 
     public func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
@@ -193,126 +108,68 @@ class FLNativeViewFactory: NSObject, FlutterPlatformViewFactory {
     }
 }
 
-// 3. Register in AppDelegate
-@UIApplicationMain
-@objc class AppDelegate: FlutterAppDelegate {
-    override func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]?
-    ) -> Bool {
-        GeneratedPluginRegistrant.register(with: self)
-        guard let pluginRegistrar = self.registrar(forPlugin: "plugin-name") else { return false }
-        
-        let factory = FLNativeViewFactory(messenger: pluginRegistrar.messenger())
-        pluginRegistrar.register(factory, withId: "<platform-view-type>")
-        
-        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+class CustomNativeView: NSObject, FlutterPlatformView {
+    private var _view: UIView
+
+    init(
+        frame: CGRect,
+        viewIdentifier viewId: Int64,
+        arguments args: Any?,
+        binaryMessenger messenger: FlutterBinaryMessenger?
+    ) {
+        _view = UIView()
+        super.init()
+        createNativeView(view: _view)
+    }
+
+    func view() -> UIView {
+        return _view
+    }
+
+    func createNativeView(view _view: UIView){
+        _view.backgroundColor = UIColor.blue
+        let nativeLabel = UILabel()
+        nativeLabel.text = "Native iOS View"
+        nativeLabel.textColor = UIColor.white
+        nativeLabel.textAlignment = .center
+        nativeLabel.frame = CGRect(x: 0, y: 0, width: 180, height: 48.0)
+        _view.addSubview(nativeLabel)
     }
 }
 ```
 
-### 4. Implement macOS Platform Views
-macOS uses Hybrid Composition. Note that gesture support is currently limited.
+### Gold Standard: Web Embedded Mode (Multi-view)
+Use this pattern to embed Flutter into an existing HTML DOM.
 
-**Dart Implementation:**
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
-Widget buildMacOsView(BuildContext context, String viewType, Map<String, dynamic> creationParams) {
-  return AppKitView(
-    viewType: viewType,
-    layoutDirection: TextDirection.ltr,
-    creationParams: creationParams,
-    creationParamsCodec: const StandardMessageCodec(),
-  );
-}
-```
-
-**Swift Implementation (Platform Side):**
-```swift
-import Cocoa
-import FlutterMacOS
-
-// 1. Define the View
-class NativeView: NSView {
-  init(viewIdentifier viewId: Int64, arguments args: Any?, binaryMessenger messenger: FlutterBinaryMessenger?) {
-    super.init(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
-    wantsLayer = true
-    layer?.backgroundColor = NSColor.systemBlue.cgColor
-    createNativeView(view: self)
-  }
-  required init?(coder nsCoder: NSCoder) { super.init(coder: nsCoder) }
-
-  func createNativeView(view _view: NSView) {
-    let nativeLabel = NSTextField()
-    nativeLabel.frame = CGRect(x: 0, y: 0, width: 180, height: 48.0)
-    nativeLabel.stringValue = "Native text from macOS"
-    nativeLabel.isEditable = false
-    nativeLabel.sizeToFit()
-    _view.addSubview(nativeLabel)
-  }
-}
-
-// 2. Define the Factory
-class NativeViewFactory: NSObject, FlutterPlatformViewFactory {
-  private var messenger: FlutterBinaryMessenger
-  init(messenger: FlutterBinaryMessenger) {
-    self.messenger = messenger
-    super.init()
-  }
-  func create(withViewIdentifier viewId: Int64, arguments args: Any?) -> NSView {
-    return NativeView(viewIdentifier: viewId, arguments: args, binaryMessenger: messenger)
-  }
-  public func createArgsCodec() -> (FlutterMessageCodec & NSObjectProtocol)? {
-    return FlutterStandardMessageCodec.sharedInstance()
-  }
-}
-
-// 3. Register in MainFlutterWindow.swift
-class MainFlutterWindow: NSWindow {
-  override func awakeFromNib() {
-    let registrar = flutterViewController.registrar(forPlugin: "plugin-name")
-    let factory = NativeViewFactory(messenger: registrar.messenger)
-    registrar.register(factory, withId: "<platform-view-type>")
-    super.awakeFromNib()
-  }
-}
-```
-
-### 5. Implement Web Embedding
-If the user chose **Embedded/Multi-view mode**, implement the JS and Dart configurations.
-
-**JavaScript Implementation (`flutter_bootstrap.js` or HTML script):**
+**JavaScript Initialization (`flutter_bootstrap.js`):**
 ```javascript
 _flutter.loader.load({
   onEntrypointLoaded: async function onEntrypointLoaded(engineInitializer) {
     let engine = await engineInitializer.initializeEngine({
-      multiViewEnabled: true, // Enables embedded mode.
+      multiViewEnabled: true, 
     });
     let app = await engine.runApp();
     
-    // Add a view to a specific host element
-    let viewId = app.addView({
-      hostElement: document.querySelector('#flutter-host-element'),
-      initialData: { greeting: 'Hello from JS!' }
+    // Add view to a specific DOM element
+    app.addView({
+      hostElement: document.querySelector('#flutter-host-container'),
     });
   }
 });
 ```
 
-**Dart Implementation (`main.dart`):**
-*Validate-and-Fix:* Ensure `runWidget` is used instead of `runApp`. `runApp` will fail with a null `implicitView` error in multi-view mode.
-
+**Dart Implementation (`lib/main.dart`):**
 ```dart
 import 'dart:ui' show FlutterView;
 import 'package:flutter/widgets.dart';
 
 void main() {
-  // MUST use runWidget, not runApp, for multi-view web embedding.
+  // Use runWidget instead of runApp for multi-view web
   runWidget(
     MultiViewApp(
-      viewBuilder: (BuildContext context) => const MyEmbeddedWidget(),
+      viewBuilder: (BuildContext context) => const Center(
+        child: Text('Embedded Flutter View'),
+      ),
     ),
   );
 }
@@ -343,8 +200,7 @@ class _MultiViewAppState extends State<MultiViewApp> with WidgetsBindingObserver
   void _updateViews() {
     final Map<Object, Widget> newViews = <Object, Widget>{};
     for (final FlutterView view in WidgetsBinding.instance.platformDispatcher.views) {
-      final Widget viewWidget = _views[view.viewId] ?? _createViewWidget(view);
-      newViews[view.viewId] = viewWidget;
+      newViews[view.viewId] = _views[view.viewId] ?? _createViewWidget(view);
     }
     setState(() {
       _views = newViews;
@@ -369,25 +225,4 @@ class _MultiViewAppState extends State<MultiViewApp> with WidgetsBindingObserver
     return ViewCollection(views: _views.values.toList(growable: false));
   }
 }
-
-class MyEmbeddedWidget extends StatelessWidget {
-  const MyEmbeddedWidget({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    // Retrieve the viewId to handle specific logic if needed
-    final int viewId = View.of(context).viewId;
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Center(child: Text('Rendered in View ID: $viewId')),
-    );
-  }
-}
 ```
-
-## Constraints
-*   **Do not** use `runApp` when configuring Flutter Web for multi-view embedding. You must use `runWidget` and manage the `FlutterView` lifecycle via `WidgetsBindingObserver`.
-*   **Do not** use `ShaderMask` or `ColorFiltered` widgets over iOS Platform Views, as they are unsupported. `BackdropFilter` has strict limitations.
-*   **Do not** assume Android `SurfaceView` or `SurfaceTexture` will automatically invalidate when their content changes. You must manually call `invalidate()` on the view or its parent.
-*   **Do not** wrap the entire output in a markdown code block. Return raw markdown text.
-*   **Always** verify the Android API level is 23+ before implementing Platform Views.

@@ -3,171 +3,175 @@ name: "flutter-testing"
 description: "Add Flutter unit tests, widget tests, or integration tests"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Wed, 04 Mar 2026 21:41:12 GMT"
+  last_modified: "Wed, 11 Mar 2026 17:47:34 GMT"
 
 ---
-# flutter-automated-testing
+# Testing-Flutter-Apps
 
-## Goal
-Generates, configures, and debugs automated tests for Flutter applications, encompassing unit, widget, integration, and plugin testing. Analyzes architectural components (such as MVVM layers) to produce isolated, mock-driven tests and end-to-end device tests. Assumes a standard Flutter project structure, existing business logic, and familiarity with Dart testing paradigms.
+## When to Use
+* The agent is tasked with implementing automated tests for a Flutter application or plugin.
+* The user requests verification of business logic within ViewModels, services, or repositories.
+* The user requires UI validation for specific widgets or screens.
+* The project requires end-to-end (E2E) integration testing to validate app behavior, routing, or performance on a real device or emulator.
+* The agent needs to test communication between Dart and native code in a Flutter plugin.
+
+## Decision Logic
+Evaluate the testing requirement to determine the appropriate test category:
+* **If** verifying a single function, method, ViewModel, or Repository in isolation:
+  * **Then** implement a **Unit Test**. Mock or fake all external dependencies.
+* **If** verifying the visual appearance, lifecycle, or user interaction of a single UI component:
+  * **Then** implement a **Widget Test**. Use `WidgetTester` to pump the widget and `Finder` to locate elements.
+* **If** verifying the complete app flow, routing, dependency injection, or performance on a real device:
+  * **Then** implement an **Integration Test**. Use the `integration_test` package.
+* **If** testing a Flutter plugin:
+  * **Then** implement **Dart Unit/Widget Tests** for the Dart API, **Integration Tests** for platform channel communication, and **Native Unit Tests** (JUnit/XCTest/GoogleTest) for the native platform implementations.
 
 ## Instructions
 
-### 1. Determine Test Type (Decision Logic)
-Evaluate the user's target code to determine the appropriate testing strategy using the following decision tree:
-*   **If verifying a single function, method, ViewModel, or Repository:** Implement a **Unit Test** (Proceed to Step 2).
-*   **If verifying a single widget's UI, layout, or interaction:** Implement a **Widget Test** (Proceed to Step 3).
-*   **If verifying complete app behavior, routing, or performance on a device:** Implement an **Integration Test** (Proceed to Step 4).
-*   **If verifying platform-specific native code (MethodChannels):** Implement a **Plugin Test** (Proceed to Step 5).
+**Interaction Rule:** Evaluate the current project context for existing test setups, state management choices (e.g., Provider, Riverpod, Bloc), and mocking frameworks (e.g., `mocktail`, `mockito`). If this information is missing or ambiguous, ask the user for clarification before proceeding with implementation.
 
-**STOP AND ASK THE USER:** "Which specific class, widget, or flow are we testing today? Please provide the relevant source code if you haven't already."
+1. **Plan the Test Strategy:** Identify the architectural layer being tested (UI layer vs. Data layer). Determine the inputs, expected outputs, and dependencies that require faking or mocking.
+2. **Configure Dependencies:** Ensure `flutter_test` is in `dev_dependencies`. For integration tests, add `integration_test: sdk: flutter`.
+3. **Create Fakes and Mocks:** Generate or manually write fake implementations for repositories (when testing ViewModels) or API clients (when testing Repositories).
+4. **Implement the Test:**
+   * For unit tests, use the `test()` function and `expect()` assertions.
+   * For widget tests, use `testWidgets()`, `tester.pumpWidget()`, and `tester.pumpAndSettle()`.
+   * For integration tests, initialize `IntegrationTestWidgetsFlutterBinding.ensureInitialized()` before defining tests.
+5. **Structure the Test File:** Place unit and widget tests in the `/test/` directory. Place integration tests in the `/integration_test/` directory. Suffix all test files with `_test.dart`.
 
-### 2. Implement Unit Tests (Logic & Architecture)
-Unit tests verify logic without rendering UI. They must reside in the `test/` directory and end with `_test.dart`.
+## Best Practices
 
-*   **For ViewModels (UI Layer Logic):** Fake the repository dependencies. Do not rely on Flutter UI libraries.
+* **Test Architectural Components Separately:** Write unit tests for every service, repository, and ViewModel class. Test the logic of each method individually.
+* **Use Fakes for Dependencies:** Inject fake or mocked repositories into ViewModels to isolate UI logic from data fetching.
+* **Keep Widgets Dumb:** Do not put business logic in widgets. Encapsulate logic in ViewModels and test the ViewModel directly via unit tests.
+* **Group Related Tests:** Use the `group()` function to categorize related tests within a single file for better readability and execution control.
+* **Verify Unidirectional Data Flow:** Ensure tests validate that data flows from the repository to the ViewModel, and events flow from the UI to the ViewModel.
+* **Test Plugin Channels:** When building plugins, write at least one integration test for each platform channel call to verify Dart-to-Native communication.
+* **Use pumpAndSettle Carefully:** In widget and integration tests, use `await tester.pumpAndSettle()` to wait for all animations to complete before asserting UI states.
+
+## Examples
+
+### Gold Standard: ViewModel Unit Test (Logic Layer)
+This example demonstrates testing a ViewModel by injecting a fake repository.
+
 ```dart
-import 'package:test/test.dart';
-// Import your ViewModel and Fakes here
+// test/view_models/home_view_model_test.dart
+import 'package:flutter_test/flutter_test.dart';
+import 'package:my_app/view_models/home_view_model.dart';
+import 'package:my_app/models/booking.dart';
 
-void main() {
-  group('HomeViewModel tests', () {
-    test('Load bookings successfully', () {
-      final viewModel = HomeViewModel(
-        bookingRepository: FakeBookingRepository()..createBooking(kBooking),
-        userRepository: FakeUserRepository(),
-      );
+// Fake implementation of the dependency
+class FakeBookingRepository implements BookingRepository {
+  List<Booking> bookings = [];
 
-      expect(viewModel.bookings.isNotEmpty, true);
-    });
-  });
+  @override
+  Future<void> createBooking(Booking booking) async {
+    bookings.add(booking);
+  }
+
+  @override
+  Future<List<Booking>> getBookings() async {
+    return bookings;
+  }
 }
-```
-
-*   **For Repositories (Data Layer Logic):** Fake the API clients or local database services.
-```dart
-import 'package:test/test.dart';
-// Import your Repository and Fakes here
 
 void main() {
-  group('BookingRepositoryRemote tests', () {
-    late BookingRepository bookingRepository;
-    late FakeApiClient fakeApiClient;
+  group('HomeViewModel Tests', () {
+    late HomeViewModel viewModel;
+    late FakeBookingRepository fakeRepository;
 
     setUp(() {
-      fakeApiClient = FakeApiClient();
-      bookingRepository = BookingRepositoryRemote(apiClient: fakeApiClient);
+      fakeRepository = FakeBookingRepository();
+      viewModel = HomeViewModel(bookingRepository: fakeRepository);
     });
 
-    test('should get booking', () async {
-      final result = await bookingRepository.getBooking(0);
-      final booking = result.asOk.value;
-      expect(booking, kBooking);
+    test('should load bookings successfully', () async {
+      // Arrange
+      final testBooking = Booking(id: '1', title: 'Test Booking');
+      await fakeRepository.createBooking(testBooking);
+
+      // Act
+      await viewModel.loadBookings();
+
+      // Assert
+      expect(viewModel.bookings.isNotEmpty, true);
+      expect(viewModel.bookings.first.title, 'Test Booking');
     });
   });
 }
 ```
 
-### 3. Implement Widget Tests (UI Components)
-Widget tests verify UI rendering and interaction. They must reside in the `test/` directory and use the `flutter_test` package.
-
-*   Use `WidgetTester` to build the widget.
-*   Use `Finder` to locate elements (`find.text()`, `find.byKey()`, `find.byWidget()`).
-*   Use `Matcher` to verify existence (`findsOneWidget`, `findsNothing`, `findsNWidgets`).
+### Gold Standard: Widget Test (UI Layer)
+This example demonstrates testing a UI component using `WidgetTester`.
 
 ```dart
+// test/ui/home_screen_test.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:my_app/ui/home_screen.dart';
 
 void main() {
-  testWidgets('HomeScreen displays title and handles tap', (WidgetTester tester) async {
-    // 1. Setup Fakes and ViewModel
-    final bookingRepository = FakeBookingRepository()..createBooking(kBooking);
-    final viewModel = HomeViewModel(
-      bookingRepository: bookingRepository,
-      userRepository: FakeUserRepository(),
-    );
+  group('HomeScreen Widget Tests', () {
+    testWidgets('should display title and increment counter on tap', (WidgetTester tester) async {
+      // Arrange: Pump the widget into the test environment
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: HomeScreen(title: 'Test Home'),
+        ),
+      );
 
-    // 2. Build the Widget tree
-    await tester.pumpWidget(
-      MaterialApp(
-        home: HomeScreen(viewModel: viewModel),
-      ),
-    );
-
-    // 3. Finders
-    final titleFinder = find.text('Home');
-    final buttonFinder = find.byKey(const Key('increment_button'));
-
-    // 4. Assertions
-    expect(titleFinder, findsOneWidget);
-
-    // 5. Interactions
-    await tester.tap(buttonFinder);
-    await tester.pumpAndSettle(); // Wait for animations/state updates to finish
-
-    expect(find.text('1'), findsOneWidget);
-  });
-}
-```
-
-### 4. Implement Integration Tests (End-to-End)
-Integration tests run on real devices or emulators. They must reside in the `integration_test/` directory.
-
-*   Ensure `integration_test` is in `dev_dependencies` in `pubspec.yaml`.
-*   Initialize `IntegrationTestWidgetsFlutterBinding`.
-
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
-import 'package:my_app/main.dart' as app;
-
-void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-
-  group('End-to-End App Test', () {
-    testWidgets('Full flow: tap FAB and verify counter', (WidgetTester tester) async {
-      // Load the full app
-      app.main();
-      await tester.pumpAndSettle();
-
-      // Verify initial state
+      // Assert: Verify initial state
+      expect(find.text('Test Home'), findsOneWidget);
       expect(find.text('0'), findsOneWidget);
 
-      // Find and tap the FAB
-      final fab = find.byKey(const ValueKey('increment'));
-      await tester.tap(fab);
-      
-      // Trigger a frame
-      await tester.pumpAndSettle();
+      // Act: Find the FAB and tap it
+      final fabFinder = find.byKey(const Key('increment_fab'));
+      await tester.tap(fabFinder);
 
-      // Verify state change
+      // Trigger a frame to process the state change
+      await tester.pump();
+
+      // Assert: Verify the counter incremented
       expect(find.text('1'), findsOneWidget);
     });
   });
 }
 ```
 
-### 5. Implement Plugin Tests (Native & Dart)
-If testing a plugin, tests must cover both Dart and Native communication.
-*   **Dart Side:** Mock the platform channel and call the plugin's public API.
-*   **Native Side:** Instruct the user to write native tests in the respective directories:
-    *   Android: `android/src/test/` (JUnit)
-    *   iOS/macOS: `example/ios/RunnerTests/` (XCTest)
-    *   Linux/Windows: `linux/test/` (GoogleTest)
+### Gold Standard: Integration Test (End-to-End)
+This example demonstrates a full integration test running on a device.
 
-### 6. Validate and Fix (Feedback Loop)
-Provide the user with the exact command to run the generated test:
-*   Unit/Widget: `flutter test test/your_test_file.dart`
-*   Integration: `flutter test integration_test/your_test_file.dart`
+```dart
+// integration_test/app_flow_test.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:my_app/main.dart' as app;
 
-**STOP AND ASK THE USER:** "Please run the test using the command above and paste the output. If the test fails, provide the stack trace so I can analyze the failure and generate a fix."
+void main() {
+  // Initialize the integration test binding
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-## Constraints
-*   **Single Source of Truth:** Do not duplicate state in tests. Always use fakes or mocks for external dependencies (Repositories, Services) to isolate the unit under test.
-*   **No Logic in Widgets:** When writing widget tests, assume the widget is "dumb". All business logic should be tested via the ViewModel/Controller unit tests.
-*   **File Naming:** All test files MUST end with `_test.dart`.
-*   **Pump vs PumpAndSettle:** Use `tester.pump()` for single frame advances. Use `tester.pumpAndSettle()` strictly when waiting for animations or asynchronous UI updates to complete.
-*   **Immutability:** Treat test data models as immutable. Create new instances for state changes rather than mutating existing mock data.
-*   **Do not use `dart:mirrors`:** Flutter does not support reflection. Rely on code generation (e.g., `build_runner`, `mockito`, `mocktail`) for mocking.
+  group('End-to-End App Flow', () {
+    testWidgets('should navigate to details screen and verify data', (WidgetTester tester) async {
+      // Arrange: Start the app
+      app.main();
+      await tester.pumpAndSettle();
+
+      // Assert: Verify we are on the home screen
+      expect(find.text('Welcome to App'), findsOneWidget);
+
+      // Act: Tap the navigation button
+      final navButton = find.byKey(const Key('nav_to_details_button'));
+      await tester.tap(navButton);
+
+      // Wait for the navigation animation to finish
+      await tester.pumpAndSettle();
+
+      // Assert: Verify we arrived at the details screen
+      expect(find.text('Details Screen'), findsOneWidget);
+      expect(find.byType(ListView), findsOneWidget);
+    });
+  });
+}
+```

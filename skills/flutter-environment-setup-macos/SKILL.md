@@ -3,85 +3,82 @@ name: "flutter-environment-setup-macos"
 description: "Set up a macOS environment for Flutter development"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Thu, 26 Feb 2026 23:40:36 GMT"
+  last_modified: "Wed, 11 Mar 2026 17:36:08 GMT"
 
 ---
-# flutter-macos-setup
+# Setting-Up-Flutter-macOS
 
-## Goal
-Configures a macOS development environment for building, running, and deploying Flutter applications. Validates tooling dependencies including Xcode and CocoaPods, and ensures the environment passes Flutter's diagnostic checks for macOS desktop development. Assumes the host operating system is macOS and the user has administrative privileges.
+## When to Use
+* The agent needs to configure a macOS environment to run, build, and deploy Flutter applications for macOS desktop devices.
+* The system requires validation of the macOS toolchain (Xcode, CocoaPods) for a Flutter project.
+* The agent encounters missing dependency errors related to Xcode or CocoaPods during a macOS build process.
 
 ## Instructions
 
-1. **Verify Flutter Installation**
-   Check if Flutter is installed and accessible in the current environment.
-   ```bash
-   flutter --version
-   ```
-   *Decision Logic:*
-   * If the command fails, **STOP AND ASK THE USER:** "Flutter is not installed or not in your PATH. Please install Flutter and add it to your PATH before continuing."
-   * If the command succeeds, proceed to step 2.
+**Interaction Rule:** Evaluate the current system context for Flutter SDK installation, Xcode presence, and CocoaPods configuration. If any of these requirements are missing or ambiguous, ask the user for clarification or permission to install before proceeding with implementation.
 
-2. **Verify Xcode Installation**
-   Ensure Xcode is installed on the macOS system.
-   ```bash
-   xcodebuild -version
-   ```
-   *Decision Logic:*
-   * If Xcode is not installed, **STOP AND ASK THE USER:** "Xcode is required for macOS Flutter development. Please install the latest version of Xcode from the Mac App Store and notify me when complete."
-   * If Xcode is installed, proceed to step 3.
+**Plan:**
+1. Verify Flutter SDK installation and update status.
+2. Configure Xcode and its command-line tools.
+3. Install CocoaPods for native macOS plugin support.
+4. Validate the setup using Flutter CLI tools.
 
-3. **Configure Xcode Command-Line Tools**
-   Link the Xcode command-line tools to the installed version of Xcode and run the first-launch setup.
-   **STOP AND ASK THE USER:** "I need to configure Xcode command-line tools. This requires administrative privileges. Please run the following command in your terminal and confirm when done:"
-   ```bash
-   sudo sh -c 'xcode-select -s /Applications/Xcode.app/Contents/Developer && xcodebuild -runFirstLaunch'
-   ```
-   *(Note: If the user installed Xcode in a non-standard directory, instruct them to replace `/Applications/Xcode.app` with their custom path).*
+**Execute:**
+1. Ensure Flutter is installed and added to the system `PATH`.
+2. Install the latest version of Xcode from the Mac App Store or Apple Developer portal.
+3. Point the Xcode command-line tools to the installed Xcode application path.
+4. Accept the Xcode license agreements globally.
+5. Install CocoaPods to manage native dependencies.
+6. Run environment validation checks to confirm the `macos` target is available.
 
-4. **Accept Xcode Licenses**
-   The Xcode license agreements must be accepted before compilation can occur.
-   **STOP AND ASK THE USER:** "Please run the following command to review and accept the Xcode license agreements:"
-   ```bash
-   sudo xcodebuild -license
-   ```
+## Decision Logic
 
-5. **Install CocoaPods**
-   CocoaPods is required for Flutter plugins that utilize native macOS code.
-   Check if CocoaPods is installed:
-   ```bash
-   pod --version
-   ```
-   *Decision Logic:*
-   * If installed, proceed to step 6.
-   * If not installed, instruct the user to install it (e.g., via Homebrew or RubyGems) and verify the installation.
-   ```bash
-   sudo gem install cocoapods
-   ```
+Use the following decision tree to navigate the macOS environment setup:
 
-6. **Validate Setup (Validate-and-Fix Loop)**
-   Run the Flutter diagnostic tool to check for any remaining macOS toolchain issues.
-   ```bash
-   flutter doctor -v
-   ```
-   *Decision Logic:*
-   * Analyze the output under the **Xcode** section.
-   * If there are errors or missing components, identify the specific missing dependency, provide the user with the exact command to fix it, and re-run `flutter doctor -v`.
-   * Repeat this loop until the Xcode section reports no issues.
+1. **Check Flutter SDK:**
+   * If installed: Proceed to step 2.
+   * If missing: Prompt user to install Flutter SDK and add `/bin` to `PATH`.
+2. **Check Xcode:**
+   * If installed: Proceed to step 3.
+   * If missing: Prompt user to install Xcode.
+3. **Configure Xcode CLI Tools:**
+   * Run path configuration command.
+   * Run license acceptance command.
+4. **Check CocoaPods:**
+   * If installed: Proceed to step 5.
+   * If missing: Install via `sudo gem install cocoapods` or Homebrew.
+5. **Validate Environment:**
+   * Run `flutter doctor -v`.
+   * If Xcode/macOS errors exist: Resolve specific errors -> Re-run `flutter doctor -v`.
+   * If clean: Run `flutter devices`.
+   * If `macos` is listed: Setup complete.
 
-7. **Verify Device Availability**
-   Ensure Flutter can detect the macOS desktop as a valid deployment target.
-   ```bash
-   flutter devices
-   ```
-   Verify that at least one entry in the output has "macos" listed as the platform. If it is missing, instruct the user to enable macOS desktop support:
-   ```bash
-   flutter config --enable-macos-desktop
-   ```
+## Best Practices
+* Always execute `xcodebuild -runFirstLaunch` when configuring the Xcode command-line tools path to ensure all background initialization completes.
+* Use `sudo xcodebuild -license` to accept licenses globally, preventing build interruptions during automated tasks.
+* Run `flutter doctor -v` (verbose mode) rather than the standard command to expose underlying toolchain paths and hidden configuration warnings.
+* Verify device connectivity explicitly using `flutter devices` before attempting to execute `flutter run -d macos`.
+* Maintain CocoaPods at the latest version to ensure compatibility with modern Flutter plugins utilizing Swift Package Manager or updated native APIs.
 
-## Constraints
-* Do NOT include any external URLs or links in the output or prompts.
-* Do NOT attempt to run `sudo` commands automatically; always pause and provide the exact command for the user to execute.
-* Do NOT explain basic terminal usage or general macOS concepts.
-* MUST ensure the `flutter doctor` Xcode section is completely clear of errors before considering the skill complete.
-* MUST assume the user is operating on a macOS environment; do not provide Windows or Linux alternatives.
+## Examples
+
+### Gold Standard Toolchain Configuration
+
+Execute the following sequential commands to configure the macOS toolchain deterministically:
+
+```bash
+# 1. Configure Xcode command-line tools path and trigger first launch
+sudo sh -c 'xcode-select -s /Applications/Xcode.app/Contents/Developer && xcodebuild -runFirstLaunch'
+
+# 2. Accept Xcode licenses globally
+sudo xcodebuild -license accept
+
+# 3. Install CocoaPods (assuming Ruby environment is configured)
+sudo gem install cocoapods
+
+# 4. Validate the Flutter toolchain setup
+flutter doctor -v
+
+# 5. Verify the macOS desktop device is recognized
+flutter devices
+```

@@ -3,137 +3,195 @@ name: "flutter-layout"
 description: "How to build your app's layout using Flutter's layout widgets and constraint system"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Fri, 27 Feb 2026 00:24:00 GMT"
+  last_modified: "Wed, 11 Mar 2026 17:37:51 GMT"
 
 ---
+# Architecting-Flutter-Layouts
+
 ## Goal
-Constructs robust, responsive Flutter user interfaces by composing layout widgets, managing constraints, and implementing adaptive design patterns. Assumes the target environment has the Flutter SDK installed and the user is familiar with Dart syntax and state management fundamentals.
+The goal of this skill is to architect and implement robust, responsive, and adaptive Flutter layouts using widget composition and constraint-based sizing.
+
+## When to Use
+*   The system needs to build new UI screens or components in a Flutter application.
+*   The system must refactor existing UIs to be responsive across mobile, tablet, and desktop platforms.
+*   The system encounters layout overflow errors or unbounded constraint exceptions (e.g., `BoxConstraints forces an infinite width`).
 
 ## Instructions
+Follow this "Plan -> Execute" workflow to build Flutter layouts:
 
-1. **Determine Layout Strategy (Decision Logic)**
-   Analyze the UI requirements and select the appropriate base layout widgets using the following decision tree:
-   *   **Is the content strictly 1-Dimensional?**
-       *   Horizontal arrangement -> Use `Row`.
-       *   Vertical arrangement -> Use `Column`.
-   *   **Does the content need to overlap (Z-axis)?**
-       *   Yes -> Use `Stack` with `Positioned` or `Align` children.
-   *   **Does the content exceed the screen size?**
-       *   Yes, 1D list -> Use `ListView`.
-       *   Yes, 2D grid -> Use `GridView`.
-       *   Yes, custom scroll effects -> Use `CustomScrollView` with Slivers.
-   *   **Does the layout need to adapt to screen size changes?**
-       *   Yes -> Use `LayoutBuilder` or `MediaQuery`.
+1.  **Plan the Layout:** Break down the UI into basic elements. Identify rows, columns, grids, overlapping elements, and areas requiring alignment, padding, or borders.
+2.  **Select Layout Widgets:** Choose the appropriate structural widgets based on the layout diagram (see Decision Logic below).
+3.  **Compose Visible Widgets:** Create the visible elements (Text, Image, Icon) and nest them inside the layout widgets.
+4.  **Apply Constraints:** Manage sizing and positioning by applying constraints. Remember that in Flutter, almost everything is a widget, including layout models.
 
-2. **Apply the Golden Rule of Constraints**
-   Enforce Flutter's core layout rule: *Constraints go down. Sizes go up. Parent sets position.* 
-   When a widget requires a specific size, ensure its parent allows it. Use `ConstrainedBox` to inject specific constraints, but remember it only adds to the parent's constraints.
-   ```dart
-   // Example: Forcing a specific size within a flexible parent
-   Center(
-     child: ConstrainedBox(
-       constraints: const BoxConstraints(
-         minWidth: 70,
-         minHeight: 70,
-         maxWidth: 150,
-         maxHeight: 150,
-       ),
-       child: Container(
-         color: Colors.blue,
-         width: 1000, // Will be constrained to 150 (max)
-         height: 10,  // Will be constrained to 70 (min)
-       ),
-     ),
-   )
-   ```
+**Interaction Rule:** Evaluate the current project context for target screen sizes, orientation requirements, and design mockups. If missing, ask the user for clarification before proceeding with implementation.
 
-3. **Implement Adaptive Layouts**
-   For screens that must support both mobile and tablet/desktop form factors, implement a `LayoutBuilder` to branch the UI logic based on available width.
-   ```dart
-   class AdaptiveScreen extends StatelessWidget {
-     const AdaptiveScreen({super.key});
+## Decision Logic
 
-     @override
-     Widget build(BuildContext context) {
-       return Scaffold(
-         body: SafeArea(
-           child: LayoutBuilder(
-             builder: (context, constraints) {
-               if (constraints.maxWidth > 600) {
-                 return _buildWideLayout();
-               } else {
-                 return _buildNarrowLayout();
-               }
-             },
-           ),
-         ),
-       );
-     }
+Use the following logic tree to select the correct layout widget:
 
-     Widget _buildWideLayout() {
-       return Row(
-         children: [
-           const SizedBox(width: 250, child: Placeholder()), // Sidebar
-           Container(width: 1, color: Colors.grey), // Divider
-           const Expanded(child: Placeholder()), // Main Content
-         ],
-       );
-     }
+*   **Does the content need to scroll?**
+    *   Yes, it's a linear list -> Use `ListView`.
+    *   Yes, it's a 2D array -> Use `GridView`.
+    *   Yes, it's a custom layout -> Wrap in `SingleChildScrollView`.
+    *   No -> Proceed below.
+*   **How are the items arranged?**
+    *   Horizontally -> Use `Row`.
+    *   Vertically -> Use `Column`.
+    *   Overlapping (Z-axis) -> Use `Stack`.
+*   **Does a single widget need styling or spacing?**
+    *   Needs padding, margin, border, and background color -> Use `Container`.
+    *   Needs *only* padding -> Use `Padding` (more performant).
+    *   Needs *only* specific dimensions -> Use `SizedBox`.
+*   **Does the layout need to adapt to screen size?**
+    *   Yes -> Use `LayoutBuilder` to read constraints and branch logic.
 
-     Widget _buildNarrowLayout() {
-       return const Column(
-         children: [
-           Expanded(child: Placeholder()), // Main Content
-         ],
-       );
-     }
-   }
-   ```
+## Best Practices
 
-4. **Compose Flex Layouts (Rows and Columns)**
-   When using `Row` or `Column`, manage child sizing using `Expanded` (forces child to fill available space) or `Flexible` (allows child to be smaller than available space).
-   ```dart
-   Row(
-     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-     crossAxisAlignment: CrossAxisAlignment.center,
-     children: [
-       const Icon(Icons.star),
-       Expanded(
-         flex: 2,
-         child: Container(color: Colors.red, height: 50),
-       ),
-       Flexible(
-         flex: 1,
-         child: Container(color: Colors.blue, height: 50),
-       ),
-     ],
-   )
-   ```
+*   **Apply the Core Constraint Rule:** Memorize and strictly adhere to: *Constraints go down. Sizes go up. Parent sets position.* A widget cannot choose its own size or placement; it must negotiate with its parent.
+*   **Prevent Unbounded Constraints:** Never nest a scrollable widget (like `ListView`) inside an unconstrained flex box (`Column` or `Row`) without wrapping it in an `Expanded` or `Flexible` widget.
+*   **Handle Flex Overflows:** Use `Expanded` or `Flexible` inside `Row` and `Column` to prevent overflow and distribute available space proportionally.
+*   **Implement Adaptive Breakpoints:** Use `LayoutBuilder` to create responsive designs that fit the UI into the available space and adaptive designs that make the UI usable (e.g., switching from a bottom navigation bar to a side navigation rail on wide screens).
+*   **Flatten Widget Trees:** Extract heavily nested layout code into separate, smaller `StatelessWidget` classes. This improves readability and minimizes the render tree rebuild scope.
 
-5. **Gather Context**
-   **STOP AND ASK THE USER:** "What are the target devices (e.g., mobile, tablet, web) and specific breakpoint widths required for this layout?"
+## Examples
 
-6. **Validate-and-Fix: Handle Unbounded Constraints**
-   Verify that no `Expanded` or `Flexible` widgets are placed inside unbounded parents (like `ListView` or `SingleChildScrollView`). If a RenderFlex overflow occurs, implement the following fix:
-   ```dart
-   // INCORRECT: Expanded inside a scrollable view causes unbounded height errors.
-   // SingleChildScrollView(child: Column(children: [Expanded(child: Container())]))
+### Gold Standard: Adaptive Layout with LayoutBuilder
 
-   // CORRECT: Use a bounded height or remove Expanded.
-   // Alternatively, use CustomScrollView with SliverFillRemaining:
-   CustomScrollView(
-     slivers: [
-       SliverToBoxAdapter(child: HeaderWidget()),
-       SliverFillRemaining(
-         hasScrollBody: false,
-         child: ExpandedContentWidget(),
-       ),
-     ],
-   )
-   ```
+This example demonstrates how to build a responsive layout that adapts between a mobile view (stacked) and a tablet/desktop view (side-by-side) using `LayoutBuilder`.
 
-## Constraints
-*   Always wrap top-level screen content in a `SafeArea` to prevent overlap with system UI.
-*   Never place an `Expanded` or `Flexible` widget inside a parent that provides unbounded constraints (e.g., `SingleChildScrollView`, `ListView`, or `Row` inside a horizontally scrolling view).
-*   Do not use `Container` solely for padding; use the `Padding` widget for better performance.
-*   Assume the user is using Material 3 (`useMaterial3: true` is default).
+```dart
+import 'package:flutter/material.dart';
+
+const double _kTabletBreakpoint = 600.0;
+
+class AdaptiveContactLayout extends StatefulWidget {
+  const AdaptiveContactLayout({super.key});
+
+  @override
+  State<AdaptiveContactLayout> createState() => _AdaptiveContactLayoutState();
+}
+
+class _AdaptiveContactLayoutState extends State<AdaptiveContactLayout> {
+  int _selectedContactId = 0;
+
+  void _onContactSelected(int id) {
+    setState(() {
+      _selectedContactId = id;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Contacts')),
+      body: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final bool isLargeScreen = constraints.maxWidth > _kTabletBreakpoint;
+
+          if (isLargeScreen) {
+            return _buildLargeScreenLayout();
+          } else {
+            return _buildSmallScreenLayout();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildLargeScreenLayout() {
+    return Row(
+      children: <Widget>[
+        SizedBox(
+          width: 320.0,
+          child: ContactList(onSelected: _onContactSelected),
+        ),
+        const VerticalDivider(width: 1.0, thickness: 1.0),
+        Expanded(
+          child: ContactDetail(contactId: _selectedContactId),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSmallScreenLayout() {
+    return ContactList(onSelected: _onContactSelected);
+  }
+}
+
+// Mock Widgets for demonstration
+class ContactList extends StatelessWidget {
+  final ValueChanged<int> onSelected;
+  const ContactList({super.key, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      itemCount: 10,
+      itemBuilder: (context, index) {
+        return ListTile(
+          title: Text('Contact $index'),
+          onTap: () => onSelected(index),
+        );
+      },
+    );
+  }
+}
+
+class ContactDetail extends StatelessWidget {
+  final int contactId;
+  const ContactDetail({super.key, required this.contactId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text('Details for Contact $_kContactIdPrefix$contactId'),
+    );
+  }
+}
+
+const String _kContactIdPrefix = '#';
+```
+
+### Gold Standard: Safe Flex Constraints
+
+This example demonstrates how to safely constrain a `ListView` inside a `Column` to prevent the "unbounded height" error.
+
+```dart
+import 'package:flutter/material.dart';
+
+class DashboardView extends StatelessWidget {
+  const DashboardView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            'Dashboard',
+            style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold),
+          ),
+        ),
+        // Wrap ListView in Expanded to provide bounded height constraints
+        Expanded(
+          child: ListView.builder(
+            itemCount: 20,
+            itemBuilder: (BuildContext context, int index) {
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: ListTile(
+                  leading: const Icon(Icons.data_usage),
+                  title: Text('Data Item $index'),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+```

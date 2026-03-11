@@ -3,201 +3,165 @@ name: "flutter-home-screen-widget"
 description: "Adding a Home Screen widget to your Flutter App"
 metadata:
   model: "models/gemini-3.1-pro-preview"
-  last_modified: "Fri, 06 Mar 2026 20:49:44 GMT"
+  last_modified: "Wed, 11 Mar 2026 17:50:22 GMT"
 
 ---
-# flutter-home-screen-widgets
+# Implementing-Flutter-Home-Screen-Widgets
 
 ## Goal
-Implements native home screen widgets (iOS and Android) for a Flutter application using the `home_widget` package. It establishes data sharing between the Dart environment and native platforms via App Groups (iOS) and SharedPreferences (Android), enabling text updates and rendering Flutter UI components as images for native display. Assumes a pre-existing Flutter project environment with native build tools (Xcode and Android Studio) configured.
+This skill enables an AI agent to build and integrate native home screen widgets (iOS and Android) into a Flutter application using the `home_widget` package. It facilitates data sharing, custom font utilization, and rendering complex Flutter UI components as images for native display.
+
+## When to Use
+* The user requests a home screen widget for an existing or new Flutter application.
+* The project requires surfacing app data directly on the iOS (SwiftUI) or Android (XML) home screen.
+* The implementation requires sharing complex Flutter UI (e.g., charts, custom painters) to a native widget by rendering it as an image.
+* The user needs to synchronize data between Dart and native local storage (`UserDefaults` for iOS, `SharedPreferences` for Android).
+
+## Decision Logic
+Evaluate the required widget complexity to determine the implementation path:
+* **If displaying simple text/data:** Pass key-value pairs from Dart using `HomeWidget.saveWidgetData` and reconstruct the UI natively using SwiftUI (iOS) or XML/Kotlin (Android).
+* **If using custom Flutter fonts on iOS:** Resolve the font path from the Flutter asset bundle in Swift and register it using `CTFontManagerRegisterFontsForURL`. (Note: Not supported on Android).
+* **If displaying complex Flutter UI (e.g., Charts):** Render the Flutter widget to a PNG using `HomeWidget.renderFlutterWidget`, save the file path to local storage, and load the image natively in SwiftUI (`UIImage`) or Kotlin (`BitmapFactory`).
 
 ## Instructions
 
-1. **Initialize Dependencies**
-   Add the `home_widget` package to the Flutter project.
-   ```bash
-   flutter pub add home_widget
-   flutter pub get
-   ```
+**Interaction Rule:** Evaluate the current project context for target platforms (iOS, Android, or both), the required App Group ID (for iOS), and the specific data/UI to be shared. If missing or ambiguous, ask the user for clarification before proceeding with implementation.
 
-2. **Decision Logic: Platform & Feature Selection**
-   Determine the target platforms and required widget capabilities.
-   **[BLOCKING] User Consultation**
-   BEFORE performing any implementation, you MUST ask:
-   * "Which platforms are you targeting?"
-   * "Do you need simple text or complex UI?"
+1. **Install Dependencies:** Add `home_widget` to the `pubspec.yaml`.
+2. **Configure iOS Native Target:**
+   * Open `ios/Runner.xcworkspace`.
+   * Add a new **Widget Extension** target.
+   * Assign an App Group to both the Runner and the Widget Extension targets to enable `UserDefaults` sharing.
+3. **Configure Android Native Target:**
+   * Create an `AppWidgetProvider` class in `android/app/src/main/java/...`.
+   * Define the widget layout in `android/app/src/main/res/layout/`.
+   * Register the receiver in `android/app/src/main/AndroidManifest.xml`.
+4. **Implement Dart Synchronization:**
+   * Use `HomeWidget.setAppGroupId()` to initialize the iOS App Group.
+   * Use `HomeWidget.saveWidgetData()` to write data.
+   * Use `HomeWidget.updateWidget()` to trigger native UI refreshes.
+5. **Implement Native Consumers:**
+   * **iOS:** Read from `UserDefaults(suiteName: "<APP_GROUP>")` in the `TimelineProvider` and render via SwiftUI.
+   * **Android:** Read from `HomeWidgetPlugin.getData(context)` in `onUpdate` and render via `RemoteViews`.
 
-   
-   *Flowchart:*
-   * If iOS -> Proceed to Step 4 (iOS Native Setup).
-   * If Android -> Proceed to Step 5 (Android Native Setup).
-   * If rendering Flutter UI as images -> Proceed to Step 6 after basic setup.
+## Best Practices
+* Always prefix the iOS widget bundle identifier with the parent app's bundle identifier.
+* Define the App Group ID as a constant in Dart and ensure it exactly matches the Xcode capability configuration.
+* Handle missing data gracefully in native code by providing fallback UI or default text (e.g., `?? "Default Text"`).
+* Render complex Flutter widgets off-screen using a `GlobalKey` and `HomeWidget.renderFlutterWidget` rather than attempting to rebuild intricate layouts in native code.
+* Use forward slashes (`/`) for all file paths in documentation and code comments.
 
-3. **Implement Dart Data Sharing Logic**
-   Create the Dart logic to save data to the native key/value store and trigger widget updates.
-   ```dart
-   import 'package:home_widget/home_widget.dart';
+## Examples
 
-   // Replace with actual App Group ID for iOS
-   const String appGroupId = 'group.com.yourcompany.app'; 
-   const String iOSWidgetName = 'NewsWidgets';
-   const String androidWidgetName = 'NewsWidget';
+### Dart: Synchronizing Data and Rendering Widgets
+```dart
+// lib/widget_sync_service.dart
+import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
 
-   Future<void> updateWidgetData(String title, String description) async {
-     await HomeWidget.setAppGroupId(appGroupId);
-     await HomeWidget.saveWidgetData<String>('headline_title', title);
-     await HomeWidget.saveWidgetData<String>('headline_description', description);
-     await HomeWidget.updateWidget(
-       iOSName: iOSWidgetName,
-       androidName: androidWidgetName,
-     );
-   }
-   ```
+const String appGroupId = 'group.com.example.app';
+const String iOSWidgetName = 'NewsWidgets';
+const String androidWidgetName = 'NewsWidget';
 
-4. **iOS Native Setup (If applicable)**
-   * Configure an App Group in Xcode for both the Runner target and the Widget Extension target.
-   * Create a Widget Extension target in Xcode (e.g., `NewsWidgets`). Uncheck "Include Live Activity" and "Include Configuration Intent".
-   * Implement the `TimelineProvider` and `View` in Swift:
-   ```swift
-   import WidgetKit
-   import SwiftUI
+Future<void> updateHomeScreenWidget(String title, String description, GlobalKey chartKey) async {
+  // 1. Initialize App Group
+  await HomeWidget.setAppGroupId(appGroupId);
 
-   struct NewsArticleEntry: TimelineEntry {
-       let date: Date
-       let title: String
-       let description: String
-   }
+  // 2. Save basic text data
+  await HomeWidget.saveWidgetData<String>('headline_title', title);
+  await HomeWidget.saveWidgetData<String>('headline_description', description);
 
-   struct Provider: TimelineProvider {
-       func placeholder(in context: Context) -> NewsArticleEntry {
-           NewsArticleEntry(date: Date(), title: "Placeholder Title", description: "Placeholder description")
-       }
+  // 3. Render complex Flutter widget to image
+  if (chartKey.currentContext != null) {
+    final imagePath = await HomeWidget.renderFlutterWidget(
+      const LineChart(), // Your complex widget
+      fileName: 'chart_screenshot',
+      key: 'chart_image_path',
+      logicalSize: chartKey.currentContext!.size,
+      pixelRatio: MediaQuery.of(chartKey.currentContext!).devicePixelRatio,
+    );
+  }
 
-       func getSnapshot(in context: Context, completion: @escaping (NewsArticleEntry) -> ()) {
-           let entry: NewsArticleEntry
-           if context.isPreview {
-               entry = placeholder(in: context)
-           } else {
-               // Replace with actual App Group ID
-               let userDefaults = UserDefaults(suiteName: "group.com.yourcompany.app")
-               let title = userDefaults?.string(forKey: "headline_title") ?? "No Title Set"
-               let description = userDefaults?.string(forKey: "headline_description") ?? "No Description Set"
-               entry = NewsArticleEntry(date: Date(), title: title, description: description)
-           }
-           completion(entry)
-       }
+  // 4. Trigger native update
+  await HomeWidget.updateWidget(
+    iOSName: iOSWidgetName,
+    androidName: androidWidgetName,
+  );
+}
+```
 
-       func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
-           getSnapshot(in: context) { (entry) in
-               let timeline = Timeline(entries: [entry], policy: .atEnd)
-               completion(timeline)
-           }
-       }
-   }
+### iOS (Swift): Consuming Data and Images
+```swift
+// ios/NewsWidgets/NewsWidgets.swift
+import WidgetKit
+import SwiftUI
 
-   struct NewsWidgetsEntryView : View {
-       var entry: Provider.Entry
+struct Provider: TimelineProvider {
+    func getSnapshot(in context: Context, completion: @escaping (NewsArticleEntry) -> ()) {
+        let userDefaults = UserDefaults(suiteName: "group.com.example.app")
+        let title = userDefaults?.string(forKey: "headline_title") ?? "No Title"
+        let imagePath = userDefaults?.string(forKey: "chart_image_path") ?? ""
+        
+        let entry = NewsArticleEntry(date: Date(), title: title, imagePath: imagePath, displaySize: context.displaySize)
+        completion(entry)
+    }
+    // ... placeholder and getTimeline omitted for brevity
+}
 
-       var body: some View {
-           VStack(alignment: .leading) {
-               Text(entry.title).font(.headline)
-               Text(entry.description).font(.subheadline)
-           }
-       }
-   }
-   ```
-   *Validate-and-Fix:* Run `flutter build ios --config-only` to ensure the Flutter configuration syncs with the new Xcode targets. If build fails, verify the App Group ID matches exactly between Dart and Swift.
+struct NewsWidgetsEntryView : View {
+    var entry: Provider.Entry
 
-5. **Android Native Setup (If applicable)**
-   * Create an `AppWidgetProvider` in Android Studio (`New -> Widget -> App Widget`).
-   * Define the XML layout (`res/layout/news_widget.xml`):
-   ```xml
-   <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-       android:id="@+id/widget_container"
-       android:layout_width="match_parent"
-       android:layout_height="match_parent"
-       android:background="@android:color/white">
-       <TextView
-           android:id="@+id/headline_title"
-           android:layout_width="wrap_content"
-           android:layout_height="wrap_content"
-           android:text="Title"
-           android:textStyle="bold"
-           android:textSize="20sp" />
-       <TextView
-           android:id="@+id/headline_description"
-           android:layout_width="wrap_content"
-           android:layout_height="wrap_content"
-           android:layout_below="@+id/headline_title"
-           android:text="Description"
-           android:textSize="16sp" />
-   </RelativeLayout>
-   ```
-   * Implement the Kotlin Provider (`NewsWidget.kt`):
-   ```kotlin
-   package com.yourdomain.yourapp
+    var ChartImage: some View {
+        if let uiImage = UIImage(contentsOfFile: entry.imagePath) {
+            return AnyView(Image(uiImage: uiImage).resizable().scaledToFit())
+        }
+        return AnyView(EmptyView())
+    }
 
-   import android.appwidget.AppWidgetManager
-   import android.appwidget.AppWidgetProvider
-   import android.content.Context
-   import android.widget.RemoteViews
-   import es.antonborri.home_widget.HomeWidgetPlugin
+    var body: some View {
+        VStack {
+            Text(entry.title).font(.headline)
+            ChartImage
+        }
+    }
+}
+```
 
-   class NewsWidget : AppWidgetProvider() {
-       override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-           for (appWidgetId in appWidgetIds) {
-               val widgetData = HomeWidgetPlugin.getData(context)
-               val views = RemoteViews(context.packageName, R.layout.news_widget).apply {
-                   val title = widgetData.getString("headline_title", null)
-                   setTextViewText(R.id.headline_title, title ?: "No title set")
+### Android (Kotlin): Consuming Data and Images
+```kotlin
+// android/app/src/main/java/com/example/app/NewsWidget.kt
+package com.example.app
 
-                   val description = widgetData.getString("headline_description", null)
-                   setTextViewText(R.id.headline_description, description ?: "No description set")
-               }
-               appWidgetManager.updateAppWidget(appWidgetId, views)
-           }
-       }
-   }
-   ```
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProvider
+import android.content.Context
+import android.graphics.BitmapFactory
+import android.widget.RemoteViews
+import es.antonborri.home_widget.HomeWidgetPlugin
+import java.io.File
 
-6. **Render Flutter Widgets as Images (Optional)**
-   If the user requires complex UI (like charts) on the widget, render the Flutter widget to a PNG and pass the file path.
-   *Dart Implementation:*
-   ```dart
-   final _globalKey = GlobalKey();
+class NewsWidget : AppWidgetProvider() {
+    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        for (appWidgetId in appWidgetIds) {
+            val widgetData = HomeWidgetPlugin.getData(context)
+            val views = RemoteViews(context.packageName, R.layout.news_widget).apply {
+                
+                // Set Text
+                val title = widgetData.getString("headline_title", "No Title")
+                setTextViewText(R.id.headline_title, title)
 
-   // Wrap your target widget with a RepaintBoundary/Key
-   // Center(key: _globalKey, child: const LineChart())
-
-   Future<void> renderAndSaveWidget() async {
-     if (_globalKey.currentContext != null) {
-       var path = await HomeWidget.renderFlutterWidget(
-         const LineChart(),
-         fileName: 'screenshot',
-         key: 'filename',
-         logicalSize: _globalKey.currentContext!.size,
-         pixelRatio: MediaQuery.of(_globalKey.currentContext!).devicePixelRatio,
-       );
-       await HomeWidget.updateWidget(iOSName: iOSWidgetName, androidName: androidWidgetName);
-     }
-   }
-   ```
-   *Native Image Loading (Android Example):*
-   ```kotlin
-   // Inside RemoteViews apply block:
-   val imageName = widgetData.getString("filename", null)
-   val imageFile = java.io.File(imageName)
-   if (imageFile.exists()) {
-       val myBitmap = android.graphics.BitmapFactory.decodeFile(imageFile.absolutePath)
-       setImageViewBitmap(R.id.widget_image, myBitmap)
-   }
-   ```
-
-## Constraints
-* **Immutable Native Identifiers:** The `iOSName` and `androidName` in Dart MUST exactly match the Swift struct name and Kotlin class name respectively.
-* **App Group Prefix:** iOS App Group IDs MUST be prefixed with `group.` and match exactly in Xcode capabilities, Swift `UserDefaults(suiteName:)`, and Dart `HomeWidget.setAppGroupId()`.
-* **No Direct Flutter UI:** Never attempt to render Flutter widgets directly in the native widget lifecycle. You MUST use `renderFlutterWidget` to generate a static image if complex UI is required.
-* **Full Re-run Required:** Changing native code (PendingIntents, Layouts, Manifest) requires a full `flutter run`.
-* **Widget Re-add:** After native changes, it is often necessary to remove and re-add the widget on the home screen for changes to take effect.
-* **Android Cell Sizing:** Android widget dimensions in `res/xml/*_info.xml` must be calculated in cells (e.g., `minWidth="250dp"`). Do not use arbitrary pixel values.
-* **Validate-and-Fix:** Always instruct the user to run native builds (`flutter build ios` / `flutter build apk`) after modifying native files to catch syntax or linking errors immediately.
+                // Set Image
+                val imagePath = widgetData.getString("chart_image_path", null)
+                if (imagePath != null) {
+                    val imageFile = File(imagePath)
+                    if (imageFile.exists()) {
+                        val bitmap = BitmapFactory.decodeFile(imageFile.absolutePath)
+                        setImageViewBitmap(R.id.widget_image, bitmap)
+                    }
+                }
+            }
+            appWidgetManager.updateAppWidget(appWidgetId, views)
+        }
+    }
+}
+```
