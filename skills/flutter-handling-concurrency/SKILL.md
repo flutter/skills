@@ -67,6 +67,7 @@ Use this workflow for persistent background processes requiring continuous bidir
 
 **Task Progress:**
 - [ ] Instantiate a `ReceivePort` on the Main Isolate to listen for messages.
+- [ ] Define the worker entry point function and mark it with `@pragma('vm:entry-point')` to prevent tree-shaking.
 - [ ] Spawn the worker isolate using `Isolate.spawn()`, passing the `ReceivePort.sendPort` as the initial message.
 - [ ] In the worker isolate, instantiate its own `ReceivePort`.
 - [ ] Send the worker's `SendPort` back to the Main Isolate via the initial port.
@@ -155,6 +156,11 @@ class WorkerManager {
   }
 
   // 3. Worker Isolate Entry Point
+  // The @pragma annotation prevents tree-shaking of this function, as it is
+  // invoked dynamically by the VM when the isolate starts, not through
+  // regular static calls. Without this, the function may be removed in
+  // release builds, causing the isolate spawn to fail at runtime.
+  @pragma('vm:entry-point')
   static void _workerEntry(SendPort mainSendPort) {
     final workerReceivePort = ReceivePort();
     
