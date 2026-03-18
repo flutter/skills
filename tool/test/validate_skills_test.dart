@@ -730,5 +730,80 @@ Content
       final valDir = Directory(p.join(validationDir.path, skillName));
       expect(valDir.existsSync(), isFalse);
     });
+
+    test('validates successfully when skill name is quoted in frontmatter', () async {
+      const skillName = 'quoted-skill';
+      final skillDir = Directory(p.join(skillsDir.path, skillName));
+      await skillDir.create();
+      final skillFile = File(p.join(skillDir.path, 'SKILL.md'));
+      await skillFile.writeAsString('''
+---
+name: "$skillName"
+description: "Desc"
+metadata:
+  model: "test-model"
+  last_modified: "date"
+---
+Content
+''');
+
+      final configFile = File(p.join(tempDir.path, 'config.yaml'));
+      await configFile.writeAsString(
+        jsonEncode([
+          {
+            'name': skillName,
+            'description': 'Desc',
+            'resources': ['https://example.com/source'],
+          },
+        ]),
+      );
+
+      final mockClient = MockClient((request) async {
+        final url = request.url.toString();
+        if (url == 'https://example.com/source') {
+          return http.Response('# Source', 200);
+        }
+        if (url.contains('generativelanguage')) {
+          return http.Response(
+            jsonEncode({
+              'candidates': [
+                {
+                  'content': {
+                    'parts': [
+                      {
+                        'text': '# Validation Report\nGrade: 100',
+                      },
+                    ],
+                  },
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        return http.Response('Not Found', 404);
+      });
+
+      runner = CommandRunner<void>('skills', 'Test runner')
+        ..addCommand(
+          ValidateSkillCommand(
+            environment: {'GEMINI_API_KEY': 'test-key'},
+            outputDir: skillsDir,
+            validationDir: validationDir,
+            httpClient: mockClient,
+          ),
+        );
+
+      await IOOverrides.runZoned(() async {
+        await runner.run(['validate-skill', configFile.path]);
+      }, getCurrentDirectory: () => tempDir);
+
+      expect(logs, contains('Validating skill: $skillName...'));
+      expect(
+        logs,
+        isNot(contains(contains('Validation Failed: Skill name mismatch'))),
+      );
+      expect(logs, contains(contains('Validation report written to')));
+    });
   });
 }

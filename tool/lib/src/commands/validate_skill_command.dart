@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
+import 'package:yaml/yaml.dart';
 
 import '../models/skill_params.dart';
 import '../services/gemini_service.dart';
@@ -73,28 +74,45 @@ class ValidateSkillCommand extends BaseSkillCommand {
 
       final existingSkillFileContent = existingSkillFile.readAsStringSync();
 
-      // Check for verbatim name
-      final namePattern = RegExp(
-        'name:\\s*["\']?${RegExp.escape(skill.name)}["\']?',
-      );
-      if (!namePattern.hasMatch(existingSkillFileContent)) {
-        logger.severe(
-          '  Validation Failed: Skill name mismatch in ${existingSkillFile.path}. '
-          'Expected "name: ${skill.name}" (quotes allowed)',
-        );
-      }
+      // Check for verbatim name and description
+      final frontmatterRegex = RegExp(r'^---\s*\n(.*?)\n---', dotAll: true);
+      final match = frontmatterRegex.firstMatch(existingSkillFileContent);
 
-      // Extract metadata from existing content
-      final generationDate =
-          RegExp(
-            'last_modified: (.*)',
-          ).firstMatch(existingSkillFileContent)?.group(1) ??
-          'Unknown';
-      final modelName =
-          RegExp(
-            'model: (.*)',
-          ).firstMatch(existingSkillFileContent)?.group(1) ??
-          'Unknown';
+      String generationDate = 'Unknown';
+      String modelName = 'Unknown';
+
+      if (match != null) {
+        final yamlText = match.group(1)!;
+        try {
+          final yaml = loadYaml(yamlText);
+          if (yaml is Map) {
+            final name = yaml['name'];
+            if (name != skill.name) {
+              logger.severe(
+                '  Validation Failed: Skill name mismatch in ${existingSkillFile.path}. '
+                'Expected "${skill.name}", got "$name"',
+              );
+            }
+
+            final metadata = yaml['metadata'];
+            if (metadata is Map) {
+              generationDate = metadata['last_modified']?.toString() ?? 'Unknown';
+              modelName = metadata['model']?.toString() ?? 'Unknown';
+            }
+          }
+        } catch (e) {
+          logger.warning('  Failed to parse frontmatter as YAML: $e');
+        }
+      } else {
+        logger.warning('  No frontmatter found in ${existingSkillFile.path}');
+        // Fallback to strict check for safety if there's no frontmatter at all
+        if (!existingSkillFileContent.contains('name: ${skill.name}')) {
+          logger.severe(
+            '  Validation Failed: Skill name mismatch in ${existingSkillFile.path}. '
+            'Expected "name: ${skill.name}"',
+          );
+        }
+      }
 
       // Compare
       final dryRun = argResults?['dry-run'] as bool? ?? false;
