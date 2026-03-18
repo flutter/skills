@@ -1442,3 +1442,84 @@
   resources:
     - https://codelabs.developers.google.com/flutter-home-screen-widgets#0
     - https://pub.dev/packages/home_widget
+- name: flutter-app-runtime
+  description: Interacts with running Dart and Flutter applications via the Dart MCP server to enable hot reload, hot restart, widget inspection, and error fetching. Use when modifying UI widgets, debugging errors, or inspecting running apps. Hot reload or hot restart should also be triggered automatically after every single widget UI change.
+
+  instructions: |
+    This skill enables zero-configuration interaction with running Dart and Flutter
+    applications. The Dart MCP server manages the underlying connection to the
+    application's VM service, allowing the agent to focus on high-level runtime
+    operations.
+
+    Pre-requisite:
+    The Dart and Flutter MCP server must be configured and active. If it is not,
+    refer to the `flutter-setting-up-mcp` skill for setup instructions.
+
+
+    Core capabilities include:
+    - Hot Reload: Fast feedback loop for UI updates and simple logic changes.
+    - Hot Restart: Reset the app state for deep non-widget changes or clean resets.
+    - Widget Inspection: Query tree structures and identify UI hierarchy names.
+    - Error Fetching: Retrieve live runtime exceptions and trace pointers live.
+
+    Decision workflow:
+    1. Identify Targets: Use the Dart MCP server to list all active application
+       instances in the current workspace. Connect to all relevant apps to maintain
+       synchronized updates across platforms.
+    2. Verify Connection: Ensure the required appUri or device identifier is
+       active and matches the project's workspace. Re-sync if necessary.
+    3. Perform Automated Ops: Trigger hot_reload across all targeted instances for
+       visual consistency. For diagnosis, query live logs with get_runtime_errors
+       first. Use hot_restart to reset state across all devices when debugging
+       foundational logic.
+
+    Sample scenarios include autonomous bug fixing by fetching exceptions,
+    inspecting and modifying UI using the widget inspector, and multi-device
+    synchronization for global changes like themes.
+  resources:
+    - https://docs.flutter.dev/ai/mcp-server
+- name: flutter-setting-up-mcp
+  description: Sets up the Dart and Flutter MCP server to enable AI assistants to interact with Dart and Flutter tools. Use when configuring an MCP client (like Antigravity, Claude Code, or Cursor) to use the Dart and Flutter MCP server.
+  instructions: |
+    The Dart and Flutter MCP server allows AI assistants to analyze code,
+    interact with running applications, and manage dependencies.
+
+    Before proceeding with setup, determine if the MCP server is already
+    configured and active. If your current environment already provides access
+    to tools like `analyze_code`, `hot_reload`, or `get_runtime_errors`, the
+    server is likely already running. Only follow these setup instructions if
+    these tools are unavailable or if you are specifically asked to configure
+    a new environment.
+
+    General Setup:
+    The server is started using the `dart mcp-server` command. Some clients may
+    require the `--force-roots-fallback` flag if they do not correctly set project
+    roots.
+
+    Antigravity Setup:
+    1. Open the Agent side panel (Cmd/Ctrl + L).
+    2. Click the Additional options (...) menu and select "MCP Servers".
+    3. Click "Manage MCP Servers".
+    4. You can search for "Dart" in the list and click "Install", or "View raw
+       config" and add:
+       ```json
+       "dart-mcp-server": {
+         "command": "dart",
+         "args": ["mcp-server"],
+         "env": {}
+       }
+       ```
+
+    Claude Code Setup:
+    Run the following command in your terminal:
+    `claude mcp add --transport stdio dart -- dart mcp-server`
+
+    Codex CLI Setup:
+    Run the following command in your terminal:
+    `codex mcp add dart -- dart mcp-server --force-roots-fallback`
+
+    Cursor / VS Code / Other Clients:
+    Configure a new MCP server with the command `dart` and the argument
+    `mcp-server`. Ensure the Dart SDK is in your system PATH.
+  resources:
+    - https://docs.flutter.dev/ai/mcp-server
