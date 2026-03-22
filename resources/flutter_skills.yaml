@@ -1442,3 +1442,18 @@
   resources:
     - https://codelabs.developers.google.com/flutter-home-screen-widgets#0
     - https://pub.dev/packages/home_widget
+- name: flutter-creating-projects
+  description: Creates a new Flutter project using the CLI or an IDE. Use when initializing a new application, package, or plugin and understanding the generated project structure.
+  instructions: |
+    Creating a new Flutter project involves using the standard `flutter create` 
+    command or the built-in project wizards in supported IDEs (VS Code, 
+    Android Studio, IntelliJ). The process generates a standard directory 
+    structure that includes a `lib/` folder for source code, a `test/` folder 
+    for automated tests, and platform-specific directories for native code 
+    integration. The `pubspec.yaml` file at the root of the project is used to 
+    manage dependencies, assets, and app metadata.
+  resources:
+    - https://docs.flutter.dev/reference/create-new-app
+    - https://docs.flutter.dev/reference/flutter-cli
+    - https://docs.flutter.dev/app-architecture/guide#overview-of-project-structure
+    - https://docs.flutter.dev/get-started/test-drive
