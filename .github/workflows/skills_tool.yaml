@@ -6,18 +6,18 @@ on:
   pull_request:
     paths:
       - '.github/workflows/skills_tool.yaml'
-      - 'tool/**'
+      - 'tool/generator/**'
   push:
     branches: [ main ]
     paths:
       - '.github/workflows/skills_tool.yaml'
-      - 'tool/**'
+      - 'tool/generator/**'
   schedule:
     - cron: '0 0 * * 0' # weekly
 
 defaults:
   run:
-    working-directory: tool
+    working-directory: tool/generator
 
 jobs:
   analyze_and_test:
