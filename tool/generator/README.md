@@ -12,6 +12,10 @@ This tool requires the `GEMINI_API_KEY` environment variable to be set.
 
 ## Commands
 
+> [!NOTE]
+> To use the default configuration file path (`resources/flutter_skills.yaml`), commands should be run from the root of the repository as: `dart run tool/generator/bin/skills.dart <command>`.
+> Alternatively, if running from this directory, specify the path to the configuration file explicitly (e.g., `../../resources/flutter_skills.yaml`).
+
 ### `generate-skill`
 
 Generates `SKILL.md` files from a YAML configuration file. Use the `--skill` option to generate a specific skill.
@@ -132,4 +136,14 @@ The default configuration file is located at `tool/resources/flutter_skills.yaml
     - https://docs.flutter.dev/ui/widgets/layout
     - https://docs.flutter.dev/ui/layout
     - ../packages/flutter/lib/src/widgets/layout.md
+```
+
+## Development
+
+To run analysis, formatting, and tests, navigate to this directory (`tool/generator`) and run:
+
+```bash
+dart analyze
+dart format .
+dart test
 ```

@@ -48,7 +48,7 @@ npx skills update flutter/skills
 | [flutter-working-with-databases](skills/flutter-working-with-databases/SKILL.md) | Manages local data persistence using SQLite or other database solutions. Use when a Flutter app needs to store, query, or synchronize large amounts of structured data on the device. |
 ## Contributing
 
-To contribute skills, see the instructions in [tool/README.md](tool/README.md).
+To contribute skills, see the instructions in [tool/generator/README.md](tool/generator/README.md).
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
 
