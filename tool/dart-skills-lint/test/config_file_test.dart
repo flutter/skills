@@ -14,7 +14,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await tempDir.exists()) {
+      if (tempDir.existsSync()) {
         await tempDir.delete(recursive: true);
       }
     });
@@ -130,7 +130,7 @@ dart_skills_lint:
       await process.shouldExit(0);
 
       final writtenFile = File('${tempDir.path}/$ignorePath');
-      expect(await writtenFile.exists(), isTrue);
+      expect(writtenFile.existsSync(), isTrue);
       final String fileContent = await writtenFile.readAsString();
       expect(fileContent, contains('"skills":'));
     });
@@ -204,7 +204,7 @@ dart_skills_lint:
       await genProcess.shouldExit(0); // Exits 0 if --generate-baseline passed
 
       final ignoreFile = File('${skillDir.path}/$defaultIgnoreFileName');
-      expect(await ignoreFile.exists(), isTrue);
+      expect(ignoreFile.existsSync(), isTrue);
 
       final String content = await ignoreFile.readAsString();
       expect(content, contains('invalid-skill-name')); // It should generate baseline for it!

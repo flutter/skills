@@ -10,7 +10,7 @@ class SkillsIgnoresStorage {
   /// Returns an empty `SkillsIgnores` if the file does not exist or fails to parse.
   Future<SkillsIgnores> load(String path) async {
     final file = File(path);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       return SkillsIgnores(skills: {});
     }
 

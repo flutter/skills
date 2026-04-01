@@ -17,7 +17,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await tempDir.exists()) {
+      if (tempDir.existsSync()) {
         await tempDir.delete(recursive: true);
       }
     });
@@ -35,7 +35,7 @@ void main() {
       await process.shouldExit(0);
 
       final ignoreFile = File('${skillDir.path}/$defaultIgnoreFileName');
-      expect(await ignoreFile.exists(), isTrue);
+      expect(ignoreFile.existsSync(), isTrue);
 
       final String content = await ignoreFile.readAsString();
       // ignore: specify_nonobvious_local_variable_types
@@ -85,7 +85,7 @@ dart_skills_lint:
       await genProcess.shouldExit(0); // Exits 0 if --generate-baseline is passed
 
       final ignoreFile = File('${tempDir.path}/$defaultIgnoreFileName');
-      expect(await ignoreFile.exists(), isTrue);
+      expect(ignoreFile.existsSync(), isTrue);
 
       final String content = await ignoreFile.readAsString();
       final json = jsonDecode(content) as Map<String, dynamic>;

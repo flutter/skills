@@ -43,7 +43,7 @@ class Configuration {
 /// Reads dart_skills_lint.yaml from the current directory and updates the check types.
 Future<Configuration> loadConfig(Set<CheckType> checkTypes) async {
   final configFile = File('dart_skills_lint.yaml');
-  if (!await configFile.exists()) {
+  if (!configFile.existsSync()) {
     return Configuration();
   }
 

@@ -182,7 +182,7 @@ Future<void> runApp(List<String> args) async {
     }
     final skillDir = Directory(normalizedSkillPath);
 
-    if (!await skillDir.exists()) {
+    if (!skillDir.existsSync()) {
       _log.severe('Specified skill directory does not exist: $normalizedSkillPath');
       globalAnyFailed = true;
       continue;
@@ -258,7 +258,7 @@ Future<void> runApp(List<String> args) async {
     }
     final rootDir = Directory(normalizedRootPath);
 
-    if (!await rootDir.exists()) {
+    if (!rootDir.existsSync()) {
       _log.severe('Specified root directory does not exist: $normalizedRootPath');
       globalAnyFailed = true;
       continue;
@@ -350,7 +350,7 @@ Future<void> runApp(List<String> args) async {
     for (final rootPath in skillDirPaths) {
       final String expandedRootPath = _expandPath(rootPath);
       final skillMdFile = File(p.join(expandedRootPath, 'SKILL.md'));
-      if (await skillMdFile.exists()) {
+      if (skillMdFile.existsSync()) {
         _log.severe(
             'Directory "$expandedRootPath" appears to be an individual skill. Use --skill / -s instead of -d / --skills-directory.');
         foundSingleSkillPassedToD = true;
@@ -375,7 +375,7 @@ Future<Map<String, List<IgnoreEntry>>> _loadIgnores(
       ? p.normalize(_expandPath(ignoreFileOverride))
       : p.join(rootDir.path, defaultIgnoreFileName);
   final file = File(ignorePath);
-  if (!await file.exists()) {
+  if (!file.existsSync()) {
     if (ignoreFileOverride != null) {
       _log.warning('File not found generating-baseline');
       try {

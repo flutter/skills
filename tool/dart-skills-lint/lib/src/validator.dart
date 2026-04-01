@@ -149,8 +149,8 @@ class Validator {
 
   Future<bool> _checkDirectoryStructure(
       Directory dir, List<ValidationError> validationErrors) async {
-    if (!await dir.exists()) {
-      if (await File(dir.path).exists()) {
+    if (!dir.existsSync()) {
+      if (File(dir.path).existsSync()) {
         validationErrors.add(ValidationError(
             ruleId: _getRule(pathDoesNotExistCheck).name,
             file: dir.path,
@@ -167,7 +167,7 @@ class Validator {
     }
 
     final skillMdFile = File(p.join(dir.path, _skillFileName));
-    if (!await skillMdFile.exists()) {
+    if (!skillMdFile.existsSync()) {
       validationErrors.add(ValidationError(
           ruleId: _getRule(pathDoesNotExistCheck).name,
           file: dir.path,
@@ -326,7 +326,7 @@ class Validator {
 
       final linkedFile = File(p.join(dir.path, path));
       final AnalysisSeverity relativePathsSeverity = _getRule(relativePathsCheck).severity;
-      if (!await linkedFile.exists()) {
+      if (!linkedFile.existsSync()) {
         if (relativePathsSeverity != AnalysisSeverity.disabled) {
           validationErrors.add(ValidationError(
               ruleId: _getRule(relativePathsCheck).name,
