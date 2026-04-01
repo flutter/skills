@@ -181,6 +181,7 @@ class Validator {
   void _parseMetadataFields(String yamlStr, Directory dir, List<ValidationError> validationErrors,
       List<String> warnings) {
     try {
+      // ignore: specify_nonobvious_local_variable_types
       final yaml = loadYaml(yamlStr);
       if (yaml is! YamlMap) {
         validationErrors.add(ValidationError(
@@ -202,6 +203,7 @@ class Validator {
       }
 
       if (_getRule(disallowedFieldCheck).severity != AnalysisSeverity.disabled) {
+        // ignore: specify_nonobvious_local_variable_types
         for (final key in yaml.keys) {
           if (!_allowedFields.contains(key)) {
             validationErrors.add(ValidationError(

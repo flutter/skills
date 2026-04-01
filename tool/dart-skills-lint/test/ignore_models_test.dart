@@ -49,7 +49,9 @@ void main() {
       expect(json.containsKey('skills'), isTrue);
       final skillsJson = json['skills'] as Map<String, dynamic>;
       expect(skillsJson.containsKey('skill-a'), isTrue);
-      expect(skillsJson['skill-a'][0]['rule_id'], equals('rule1'));
+      final skillAList = skillsJson['skill-a'] as List<dynamic>;
+      final firstItem = skillAList[0] as Map<String, dynamic>;
+      expect(firstItem['rule_id'], equals('rule1'));
     });
   });
 }

@@ -121,7 +121,7 @@ Future<void> runApp(List<String> args) async {
       final defaults = ['.claude/skills', '.agents/skills'];
       final existingDefaults = <String>[];
       for (final path in defaults) {
-        if (await Directory(path).exists()) {
+        if (Directory(path).existsSync()) {
           existingDefaults.add(path);
         }
       }
@@ -379,7 +379,7 @@ Future<Map<String, List<IgnoreEntry>>> _loadIgnores(
     if (ignoreFileOverride != null) {
       _log.warning('File not found generating-baseline');
       try {
-        await file.writeAsString(jsonEncode({'skills': {}}));
+        await file.writeAsString(jsonEncode({'skills': <String, dynamic>{}}));
       } catch (_) {
         // Fallback or ignore write errors
       }
@@ -394,7 +394,9 @@ Future<Map<String, List<IgnoreEntry>>> _loadIgnores(
 
 void _applyIgnores(ValidationResult result, List<IgnoreEntry> ignores, Directory skillDir) {
   for (final ValidationError error in result.validationErrors) {
-    if (error.isIgnored) continue;
+    if (error.isIgnored) {
+      continue;
+    }
     final String fileName = error.file;
     for (final ignore in ignores) {
       if (ignore.ruleId == error.ruleId && ignore.fileName == fileName) {

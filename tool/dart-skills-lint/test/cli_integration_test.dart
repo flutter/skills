@@ -88,7 +88,7 @@ dart_skills_lint:
       expect(await ignoreFile.exists(), isTrue);
 
       final String content = await ignoreFile.readAsString();
-      final json = jsonDecode(content);
+      final json = jsonDecode(content) as Map<String, dynamic>;
       final skills = json['skills'] as Map<String, dynamic>;
 
       expect(skills.containsKey('skill-one'), isTrue);
