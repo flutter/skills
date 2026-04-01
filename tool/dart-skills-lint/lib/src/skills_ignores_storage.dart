@@ -6,7 +6,7 @@ import 'models/skills_ignores.dart';
 /// Service class for reading and writing the `SkillsIgnores` model to/from disk.
 class SkillsIgnoresStorage {
   /// Loads `SkillsIgnores` from the specified path.
-  /// 
+  ///
   /// Returns an empty `SkillsIgnores` if the file does not exist or fails to parse.
   Future<SkillsIgnores> load(String path) async {
     final file = File(path);

@@ -20,7 +20,6 @@ AnalysisSeverity _parseSeverity(String value) {
 
 /// Configuration for a specific directory.
 class DirectoryConfig {
-
   DirectoryConfig({required this.path, required this.rules, this.ignoreFile});
   final String path;
   final Map<String, AnalysisSeverity> rules;
@@ -29,7 +28,6 @@ class DirectoryConfig {
 
 /// Structured configuration for the linter.
 class Configuration {
-
   Configuration({this.directoryConfigs = const []});
   final List<DirectoryConfig> directoryConfigs;
 }
@@ -50,8 +48,7 @@ Future<Configuration> loadConfig(Set<CheckType> checkTypes) async {
           if (rules is YamlMap) {
             for (final check in checkTypes) {
               if (rules.containsKey(check.name)) {
-                check.severity = _parseSeverity(
-                    rules[check.name]?.toString() ?? '');
+                check.severity = _parseSeverity(rules[check.name]?.toString() ?? '');
               }
             }
           }
@@ -74,7 +71,8 @@ Future<Configuration> loadConfig(Set<CheckType> checkTypes) async {
                   }
                 }
                 final ignoreFile = dir[_ignoreFileKey] as String?;
-                directoryConfigs.add(DirectoryConfig(path: path, rules: rules, ignoreFile: ignoreFile));
+                directoryConfigs
+                    .add(DirectoryConfig(path: path, rules: rules, ignoreFile: ignoreFile));
               }
             }
           }

@@ -21,7 +21,7 @@ void main() {
     test('inflates empty JSON into empty skills map', () async {
       final file = File('${tempDir.path}/empty.json');
       await file.writeAsString('{}');
-      
+
       final SkillsIgnores ignores = await storage.load(file.path);
       expect(ignores.skills.isEmpty, isTrue);
     });
@@ -37,7 +37,7 @@ void main() {
   }
 }
 ''');
-      
+
       final SkillsIgnores ignores = await storage.load(file.path);
       expect(ignores.skills.containsKey('skill-a'), isTrue);
       expect(ignores.skills['skill-a']!.length, equals(1));
@@ -55,7 +55,7 @@ void main() {
   }
 }
 ''');
-      
+
       final SkillsIgnores ignores = await storage.load(file.path);
       expect(ignores.skills.containsKey('skill-a'), isTrue);
       expect(ignores.skills['skill-a']!.length, equals(2));
@@ -72,7 +72,7 @@ void main() {
   }
 }
 ''');
-      
+
       final SkillsIgnores ignores = await storage.load(file.path);
       expect(ignores.skills.containsKey('skill-a'), isTrue);
       expect(ignores.skills.containsKey('skill-b'), isTrue);

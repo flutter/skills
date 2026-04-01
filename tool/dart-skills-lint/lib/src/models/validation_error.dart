@@ -2,7 +2,6 @@ import 'check_type.dart';
 
 /// Represents a single validation error found during analysis.
 class ValidationError {
-
   ValidationError({
     required this.ruleId,
     required this.file,
@@ -10,6 +9,7 @@ class ValidationError {
     required this.severity,
     this.isIgnored = false,
   });
+
   /// The unique rule ID (e.g., 'description_too_long').
   final String ruleId;
 

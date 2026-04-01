@@ -50,9 +50,10 @@ description: A test skill
       expect(ignores.length, equals(1));
     });
 
-    test('cross-skill baseline de-duplicates and suppresses all errors across different skills', () async {
+    test('cross-skill baseline de-duplicates and suppresses all errors across different skills',
+        () async {
       final Directory skillsDir = await Directory('${tempDir.path}/skills').create();
-      
+
       // Create skill-one with a broken link
       final Directory skill1Dir = await Directory('${skillsDir.path}/skill-one').create();
       await File('${skill1Dir.path}/SKILL.md').writeAsString('''
@@ -86,7 +87,12 @@ dart_skills_lint:
       // 1. Run with --generate-baseline. It should evaluate all skills and write both to the baseline!
       final TestProcess genProcess = await TestProcess.start(
         'dart',
-        [p.normalize(p.absolute('bin/dart_skills_lint.dart')), '-d', 'skills', '--generate-baseline'],
+        [
+          p.normalize(p.absolute('bin/dart_skills_lint.dart')),
+          '-d',
+          'skills',
+          '--generate-baseline'
+        ],
         workingDirectory: tempDir.path,
       );
       await genProcess.shouldExit(0); // Exits 0 if --generate-baseline is passed
@@ -97,7 +103,7 @@ dart_skills_lint:
       final String content = await ignoreFile.readAsString();
       final json = jsonDecode(content);
       final skills = json['skills'] as Map<String, dynamic>;
-      
+
       expect(skills.containsKey('skill-one'), isTrue);
       expect(skills.containsKey('skill-two'), isTrue);
 
@@ -130,8 +136,7 @@ Body''');
     });
 
     test('exits with 1 and error message for invalid skill', () async {
-      final Directory skillDir =
-          await Directory('${tempDir.path}/invalid-skill').create();
+      final Directory skillDir = await Directory('${tempDir.path}/invalid-skill').create();
       // SKILL.md is missing
 
       final TestProcess process = await TestProcess.start(
@@ -146,8 +151,7 @@ Body''');
       await process.shouldExit(1);
     });
 
-    test('exits with 0 and validates subdirectories if named "skills"',
-        () async {
+    test('exits with 0 and validates subdirectories if named "skills"', () async {
       final Directory skillsDir = await Directory('${tempDir.path}/skills').create();
       final Directory skill1 = await Directory('${skillsDir.path}/skill-a').create();
       await File('${skill1.path}/SKILL.md').writeAsString('''
@@ -183,8 +187,7 @@ Body''');
       await process.shouldExit(0);
     });
 
-    test('exits with 1 if any subdirectory skill fails in "skills" folder',
-        () async {
+    test('exits with 1 if any subdirectory skill fails in "skills" folder', () async {
       final Directory skillsDir = await Directory('${tempDir.path}/skills').create();
       final Directory skill1 = await Directory('${skillsDir.path}/skill-a').create();
       await File('${skill1.path}/SKILL.md').writeAsString('''
@@ -212,8 +215,7 @@ Body''');
       await process.shouldExit(1);
     });
 
-    test(
-        'exits with 1 early and does not process subsequent skills if --fast-fail is passed',
+    test('exits with 1 early and does not process subsequent skills if --fast-fail is passed',
         () async {
       final Directory skillsDir = await Directory('${tempDir.path}/skills').create();
 
@@ -238,7 +240,7 @@ Body''');
       final String stdoutStr = stdout.join('\n');
       expect(stdoutStr, contains(evaluatingDirMsg));
       expect(stdoutStr, contains('--- Validating skill: skill-a ---'));
-      
+
       final List<String> stderr = await process.stderr.rest.toList();
       expect(stderr.join('\n'), contains(skillIsInvalidMsg));
 
@@ -246,8 +248,7 @@ Body''');
       await process.shouldExit(1);
     });
 
-    test('exits with 0 and suppresses success messages if --quiet is passed',
-        () async {
+    test('exits with 0 and suppresses success messages if --quiet is passed', () async {
       final Directory skillDir = await Directory('${tempDir.path}/valid-skill').create();
       await File('${skillDir.path}/SKILL.md').writeAsString('''
 ---
@@ -280,7 +281,8 @@ Body''');
     });
 
     test('picks up .claude/skills when no flags passed and it exists', () async {
-      final Directory claudeDir = await Directory('${tempDir.path}/.claude/skills').create(recursive: true);
+      final Directory claudeDir =
+          await Directory('${tempDir.path}/.claude/skills').create(recursive: true);
       final Directory skillDir = await Directory('${claudeDir.path}/valid-skill').create();
       await File('${skillDir.path}/SKILL.md').writeAsString('''
 ---
@@ -340,15 +342,16 @@ Body''');
 
     test('fails if -d specifies a directory with zero skills', () async {
       final Directory emptyDir = await Directory('${tempDir.path}/empty-root').create();
-      
+
       final TestProcess process = await TestProcess.start(
         'dart',
         ['bin/dart_skills_lint.dart', '-d', emptyDir.path],
       );
-      
+
       await process.shouldExit(1);
       final List<String> stderr = await process.stderr.rest.toList();
-      expect(stderr.join('\n'), contains('No skills found to validate in the specified directories.'));
+      expect(
+          stderr.join('\n'), contains('No skills found to validate in the specified directories.'));
     });
 
     test('fails if -d specifies a single skill directory (no sub-folders found)', () async {
@@ -367,7 +370,10 @@ Body''');
 
       await process.shouldExit(1);
       final List<String> stderr = await process.stderr.rest.toList();
-      expect(stderr.join('\n'), contains('appears to be an individual skill. Use --skill / -s instead of -d / --skills-directory.'));
+      expect(
+          stderr.join('\n'),
+          contains(
+              'appears to be an individual skill. Use --skill / -s instead of -d / --skills-directory.'));
     });
 
     test('validates multiple skills with multiple -s flags', () async {
@@ -402,7 +408,7 @@ Body''');
     test('handles malformed JSON ignore-file gracefully by falling back', () async {
       final malformedFile = File('${tempDir.path}/malformed.json');
       await malformedFile.writeAsString('{ malformed json }');
-      
+
       final Directory skillFolder = await Directory('${tempDir.path}/skill-x').create();
       await File('${skillFolder.path}/SKILL.md').writeAsString('''
 ---

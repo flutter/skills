@@ -162,7 +162,12 @@ dart_skills_lint:
       // 2. Run with --ignore-config. Should fail because config is ignored and default is used.
       final TestProcess failProcess = await TestProcess.start(
         'dart',
-        [p.normalize(p.absolute('bin/dart_skills_lint.dart')), '-s', 'TEST-SKILL', '--ignore-config'],
+        [
+          p.normalize(p.absolute('bin/dart_skills_lint.dart')),
+          '-s',
+          'TEST-SKILL',
+          '--ignore-config'
+        ],
         workingDirectory: tempDir.path,
       );
       await failProcess.shouldExit(1);
@@ -187,7 +192,13 @@ dart_skills_lint:
       // 1. Generate baseline with --ignore-config. It should ignore config (so the rule is enabled) and find violations to generate baseline for!
       final TestProcess genProcess = await TestProcess.start(
         'dart',
-        [p.normalize(p.absolute('bin/dart_skills_lint.dart')), '-s', 'TEST-SKILL', '--generate-baseline', '--ignore-config'],
+        [
+          p.normalize(p.absolute('bin/dart_skills_lint.dart')),
+          '-s',
+          'TEST-SKILL',
+          '--generate-baseline',
+          '--ignore-config'
+        ],
         workingDirectory: tempDir.path,
       );
       await genProcess.shouldExit(0); // Exits 0 if --generate-baseline passed

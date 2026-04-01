@@ -32,8 +32,8 @@ description: A test skill
       final ValidationResult result = await validator.validate(skillDir);
 
       expect(result.isValid, isFalse);
-      expect(result.errors,
-          contains(contains('Absolute filepath found in link: /absolute/path.md')));
+      expect(
+          result.errors, contains(contains('Absolute filepath found in link: /absolute/path.md')));
     });
 
     test('flags windows absolute path starting with drive letter as error', () async {
@@ -112,7 +112,8 @@ Body with [broken link](missing.md) and [absolute link](/absolute/path.md)''');
       expect(result.warnings, isEmpty);
     });
 
-    test('flags absolute path as warning when absolutePathsSeverity: AnalysisSeverity.warning', () async {
+    test('flags absolute path as warning when absolutePathsSeverity: AnalysisSeverity.warning',
+        () async {
       final Directory skillDir = await Directory('${tempDir.path}/test-skill').create();
       await File('${skillDir.path}/SKILL.md').writeAsString('''
 ---
@@ -128,7 +129,8 @@ Body with [absolute link](/absolute/path.md)''');
 
       expect(result.isValid, isTrue); // Warnings don't fail validation
       expect(result.errors, isEmpty);
-      expect(result.warnings, contains(contains('Absolute filepath found in link: /absolute/path.md')));
+      expect(result.warnings,
+          contains(contains('Absolute filepath found in link: /absolute/path.md')));
     });
   });
 }

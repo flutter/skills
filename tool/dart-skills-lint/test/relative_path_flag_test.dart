@@ -18,7 +18,6 @@ void main() {
       }
     });
 
-
     test('validates links when relativePathsSeverity = warning', () async {
       final skillDir = Directory('${tempDir.path}/test-skill');
       await skillDir.create();
@@ -36,15 +35,11 @@ Body with [broken link](missing.md) and [absolute link](/absolute/path.md)''');
 
       expect(result.isValid, isFalse);
       expect(
-          result.errors,
-          contains(
-              contains('Absolute filepath found in link: /absolute/path.md')));
-      expect(result.warnings,
-          contains(contains('Linked file does not exist: missing.md')));
+          result.errors, contains(contains('Absolute filepath found in link: /absolute/path.md')));
+      expect(result.warnings, contains(contains('Linked file does not exist: missing.md')));
     });
 
-    test('passes when relativePathsSeverity = warning and links are valid',
-        () async {
+    test('passes when relativePathsSeverity = warning and links are valid', () async {
       final skillDir = Directory('${tempDir.path}/test-skill');
       await skillDir.create();
       await File('${skillDir.path}/SKILL.md').writeAsString('''
@@ -53,8 +48,7 @@ name: test-skill
 description: A test skill
 ---
 Body with [valid relative link](valid.md)''');
-      await File('${skillDir.path}/valid.md')
-          .writeAsString('Valid file content');
+      await File('${skillDir.path}/valid.md').writeAsString('Valid file content');
 
       final validator = Validator(rules: {
         CheckType(name: 'check-relative-paths', defaultSeverity: AnalysisSeverity.warning)

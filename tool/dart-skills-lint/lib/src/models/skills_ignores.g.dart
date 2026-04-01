@@ -6,8 +6,7 @@ part of 'skills_ignores.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-SkillsIgnores _$SkillsIgnoresFromJson(Map<String, dynamic> json) =>
-    SkillsIgnores(
+SkillsIgnores _$SkillsIgnoresFromJson(Map<String, dynamic> json) => SkillsIgnores(
       skills: (json['skills'] as Map<String, dynamic>).map(
         (k, e) => MapEntry(
             k,
@@ -17,8 +16,6 @@ SkillsIgnores _$SkillsIgnoresFromJson(Map<String, dynamic> json) =>
       ),
     );
 
-Map<String, dynamic> _$SkillsIgnoresToJson(SkillsIgnores instance) =>
-    <String, dynamic>{
-      'skills': instance.skills
-          .map((k, e) => MapEntry(k, e.map((e) => e.toJson()).toList())),
+Map<String, dynamic> _$SkillsIgnoresToJson(SkillsIgnores instance) => <String, dynamic>{
+      'skills': instance.skills.map((k, e) => MapEntry(k, e.map((e) => e.toJson()).toList())),
     };

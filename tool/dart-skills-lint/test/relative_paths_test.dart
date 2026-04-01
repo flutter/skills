@@ -76,12 +76,10 @@ description: A test skill
       final ValidationResult result = await validator.validate(skillDir);
 
       expect(result.isValid, isFalse);
-      expect(
-          result.errors, contains(contains('Absolute filepath found in link')));
+      expect(result.errors, contains(contains('Absolute filepath found in link')));
     });
 
-    test('ignores web URLs, emails, javascript, data URIs, and anchors',
-        () async {
+    test('ignores web URLs, emails, javascript, data URIs, and anchors', () async {
       final Directory skillDir = await Directory('${tempDir.path}/test-skill').create();
       await File('${skillDir.path}/SKILL.md').writeAsString('''
 ---
@@ -103,8 +101,7 @@ description: A test skill
 
       expect(result.isValid, isTrue);
       expect(result.errors, isEmpty);
-      expect(result.warnings,
-          isEmpty); // None of these should trigger local file checks
+      expect(result.warnings, isEmpty); // None of these should trigger local file checks
     });
   });
 }

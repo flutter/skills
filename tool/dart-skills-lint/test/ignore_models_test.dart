@@ -41,9 +41,11 @@ void main() {
 
     test('toJson serializes nested skills map', () {
       final entry = IgnoreEntry(ruleId: 'rule1', fileName: 'file1.md');
-      final ignores = SkillsIgnores(skills: {'skill-a': [entry]});
+      final ignores = SkillsIgnores(skills: {
+        'skill-a': [entry]
+      });
       final Map<String, dynamic> json = ignores.toJson();
-      
+
       expect(json.containsKey('skills'), isTrue);
       final skillsJson = json['skills'] as Map<String, dynamic>;
       expect(skillsJson.containsKey('skill-a'), isTrue);

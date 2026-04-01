@@ -57,8 +57,7 @@ Body''');
       final validator = Validator();
       final ValidationResult result = await validator.validate(skillDir);
 
-      expect(result.isValid, isTrue,
-          reason: result.errors.isEmpty ? '' : result.errors.first);
+      expect(result.isValid, isTrue, reason: result.errors.isEmpty ? '' : result.errors.first);
       expect(result.errors, isEmpty);
     });
   });

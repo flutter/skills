@@ -11,8 +11,7 @@ IgnoreEntry _$IgnoreEntryFromJson(Map<String, dynamic> json) => IgnoreEntry(
       fileName: json['file_name'] as String,
     );
 
-Map<String, dynamic> _$IgnoreEntryToJson(IgnoreEntry instance) =>
-    <String, dynamic>{
+Map<String, dynamic> _$IgnoreEntryToJson(IgnoreEntry instance) => <String, dynamic>{
       'rule_id': instance.ruleId,
       'file_name': instance.fileName,
     };

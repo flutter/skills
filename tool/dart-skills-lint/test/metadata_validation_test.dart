@@ -55,8 +55,7 @@ Body''');
       final ValidationResult result = await validator.validate(tempDir);
 
       expect(result.isValid, isFalse);
-      expect(result.errors,
-          contains(contains('Missing required field: description')));
+      expect(result.errors, contains(contains('Missing required field: description')));
     });
 
     test('passes without warning if disallowed fields are present', () async {
@@ -76,7 +75,8 @@ Body''');
       expect(result.isValid, isTrue);
       expect(result.warnings, isEmpty);
 
-      final Iterable<ValidationError> disallowedErrors = result.validationErrors.where((e) => e.ruleId == disallowedFieldCheck.name);
+      final Iterable<ValidationError> disallowedErrors =
+          result.validationErrors.where((e) => e.ruleId == disallowedFieldCheck.name);
       expect(disallowedErrors, isEmpty);
     });
 
@@ -105,8 +105,7 @@ Body''');
 
       final ValidationResult result = await validator.validate(skillDir);
 
-      expect(result.isValid, isTrue,
-          reason: result.errors.isEmpty ? '' : result.errors.first);
+      expect(result.isValid, isTrue, reason: result.errors.isEmpty ? '' : result.errors.first);
       expect(result.errors, isEmpty);
     });
   });

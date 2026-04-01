@@ -10,13 +10,14 @@ import 'rules.dart';
 
 /// The result of a skill directory validation attempt.
 class ValidationResult {
-
   ValidationResult({
     this.validationErrors = const [],
     List<String> warnings = const [],
   }) : _manualWarnings = warnings;
+
   /// Whether the skill directory is valid according to the specification.
-  bool get isValid => !validationErrors.any((e) => e.severity == AnalysisSeverity.error && !e.isIgnored);
+  bool get isValid =>
+      !validationErrors.any((e) => e.severity == AnalysisSeverity.error && !e.isIgnored);
 
   /// A list of structured validation errors found.
   final List<ValidationError> validationErrors;
@@ -24,19 +25,22 @@ class ValidationResult {
   final List<String> _manualWarnings;
 
   /// A list of error messages for failing checks (excluding ignored ones).
-  List<String> get errors =>
-      validationErrors.where((e) => e.severity == AnalysisSeverity.error && !e.isIgnored).map((e) => e.message).toList();
+  List<String> get errors => validationErrors
+      .where((e) => e.severity == AnalysisSeverity.error && !e.isIgnored)
+      .map((e) => e.message)
+      .toList();
 
   /// A list of warning messages for suboptimal setups or recommendations.
   List<String> get warnings => [
         ..._manualWarnings,
-        ...validationErrors.where((e) => e.severity == AnalysisSeverity.warning && !e.isIgnored).map((e) => e.message),
+        ...validationErrors
+            .where((e) => e.severity == AnalysisSeverity.warning && !e.isIgnored)
+            .map((e) => e.message),
       ];
 }
 
 /// Validates agent skill directories against the Agent Skills specification.
 class Validator {
-
   Validator({Set<CheckType>? rules})
       : _ruleOverrides = rules != null ? {for (var r in rules) r.name: r} : {};
   static const _skillFileName = 'SKILL.md';
@@ -47,12 +51,9 @@ class Validator {
     return _ruleOverrides[defaultRule.name] ?? defaultRule;
   }
 
-  static const _dirStructureUrl =
-      ' (see https://agentskills.io/specification#directory-structure)';
-  static const _metadataUrl =
-      ' (see https://agentskills.io/specification#frontmatter)';
-  static const _nameFieldUrl =
-      ' (see https://agentskills.io/specification#name-field)';
+  static const _dirStructureUrl = ' (see https://agentskills.io/specification#directory-structure)';
+  static const _metadataUrl = ' (see https://agentskills.io/specification#frontmatter)';
+  static const _nameFieldUrl = ' (see https://agentskills.io/specification#name-field)';
   static const _descriptionFieldUrl =
       ' (see https://agentskills.io/specification#description-field)';
   static const _compatibilityFieldUrl =
@@ -97,8 +98,7 @@ class Validator {
   @visibleForTesting
   static const maxCompatibilityLength = 500;
 
-  static final _skillStartRegex =
-      RegExp(r'^---\s*\n(.*?)\n---\s*\n', dotAll: true);
+  static final _skillStartRegex = RegExp(r'^---\s*\n(.*?)\n---\s*\n', dotAll: true);
   static final _validNameRegex = RegExp(r'^[a-z0-9\-]+$');
   static final _markdownLinkRegex = RegExp(r'\[.*?\]\((.*?)\)');
 
@@ -114,8 +114,7 @@ class Validator {
 
     final bool isValidDir = await _checkDirectoryStructure(dir, validationErrors);
     if (!isValidDir) {
-      return ValidationResult(
-          validationErrors: validationErrors, warnings: warnings);
+      return ValidationResult(validationErrors: validationErrors, warnings: warnings);
     }
 
     final skillMdFile = File(p.join(dir.path, _skillFileName));
@@ -224,7 +223,8 @@ class Validator {
         validationErrors.add(ValidationError(
             ruleId: _getRule(descriptionTooLongCheck).name,
             file: _skillFileName,
-            message: 'Description too long. Maximum $maxDescriptionLength characters.$_descriptionFieldUrl',
+            message:
+                'Description too long. Maximum $maxDescriptionLength characters.$_descriptionFieldUrl',
             severity: _getRule(descriptionTooLongCheck).severity));
       }
 
@@ -234,7 +234,8 @@ class Validator {
           validationErrors.add(ValidationError(
               ruleId: _getRule(validYamlMetadataCheck).name,
               file: _skillFileName,
-              message: 'Compatibility too long. Maximum $maxCompatibilityLength characters.$_compatibilityFieldUrl',
+              message:
+                  'Compatibility too long. Maximum $maxCompatibilityLength characters.$_compatibilityFieldUrl',
               severity: _getRule(validYamlMetadataCheck).severity));
         }
       }
@@ -266,7 +267,8 @@ class Validator {
       validationErrors.add(ValidationError(
           ruleId: _getRule(invalidSkillNameCheck).name,
           file: _skillFileName,
-          message: 'Skill name contains invalid characters. Only lowercase letters, digits, and hyphens allowed.$_nameFieldUrl',
+          message:
+              'Skill name contains invalid characters. Only lowercase letters, digits, and hyphens allowed.$_nameFieldUrl',
           severity: _getRule(invalidSkillNameCheck).severity));
     }
     if (name.startsWith('-') || name.endsWith('-')) {
@@ -289,7 +291,8 @@ class Validator {
       validationErrors.add(ValidationError(
           ruleId: _getRule(invalidSkillNameCheck).name,
           file: _skillFileName,
-          message: 'Skill name ($name) must exactly match the name of its parent directory ($dirName).$_nameFieldUrl',
+          message:
+              'Skill name ($name) must exactly match the name of its parent directory ($dirName).$_nameFieldUrl',
           severity: _getRule(invalidSkillNameCheck).severity));
     }
   }
