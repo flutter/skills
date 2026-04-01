@@ -26,6 +26,7 @@ Manage Flutter animations using the core typed `Animation` system. Do not manual
 *   **`AnimationController`**: Instantiate this to drive the animation. It generates values (typically 0.0 to 1.0) tied to the screen refresh rate. Always provide a `vsync` (usually via `SingleTickerProviderStateMixin`) to prevent offscreen resource consumption. Always `dispose()` controllers to prevent memory leaks.
 *   **`Tween<T>`**: Define a stateless mapping from an input range (usually 0.0-1.0) to an output type (e.g., `Color`, `Offset`, `double`). Chain tweens with curves using `.animate()`.
 *   **`Curve`**: Apply non-linear timing (e.g., `Curves.easeIn`, `Curves.bounceOut`) to an animation using a `CurvedAnimation` or `CurveTween`.
+*   **`CurvedAnimation`**: When you create one explicitly (e.g., for `Interval` / staggered motion), keep a reference and call `dispose()` when done. Leak tracking flags undisposed instances (see [flutter/flutter#141198](https://github.com/flutter/flutter/issues/141198)).
 
 ## Animation Strategies
 
@@ -62,7 +63,7 @@ Use this workflow when you need granular control over the animation lifecycle.
   - [ ] Wrap the target UI in an `AnimatedBuilder` (preferred for complex trees) or subclass `AnimatedWidget`.
   - [ ] Pass the `Animation` object to the `AnimatedBuilder`'s `animation` property.
   - [ ] Control playback using `controller.forward()`, `controller.reverse()`, or `controller.repeat()`.
-  - [ ] Call `controller.dispose()` in the `dispose()` method.
+  - [ ] Call `controller.dispose()` in the `dispose()` method (if you use `CurvedAnimation` or another animation with its own `dispose()`, call that **before** the controller).
   - [ ] Run validator -> check for memory leaks -> ensure `dispose()` is called.
 
 ### Implementing Hero Transitions
@@ -101,6 +102,8 @@ class StaggeredAnimationDemo extends StatefulWidget {
 
 class _StaggeredAnimationDemoState extends State<StaggeredAnimationDemo> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  late CurvedAnimation _widthCurve;
+  late CurvedAnimation _colorCurve;
   late Animation<double> _widthAnimation;
   late Animation<Color?> _colorAnimation;
 
@@ -113,27 +116,28 @@ class _StaggeredAnimationDemoState extends State<StaggeredAnimationDemo> with Si
     );
 
     // Staggered width animation (0.0 to 0.5 interval)
-    _widthAnimation = Tween<double>(begin: 50.0, end: 200.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
-      ),
+    _widthCurve = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
     );
+    _widthAnimation = Tween<double>(begin: 50.0, end: 200.0).animate(_widthCurve);
 
     // Staggered color animation (0.5 to 1.0 interval)
-    _colorAnimation = ColorTween(begin: Colors.blue, end: Colors.red).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
-      ),
+    _colorCurve = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
     );
+    _colorAnimation = ColorTween(begin: Colors.blue, end: Colors.red).animate(_colorCurve);
 
     _controller.forward();
   }
 
   @override
   void dispose() {
-    _controller.dispose(); // CRITICAL: Prevent memory leaks
+    // CRITICAL: Prevent memory leaks
+    _widthCurve.dispose();
+    _colorCurve.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
