@@ -11,16 +11,16 @@ import 'package:yaml/yaml.dart';
 
 void main() {
   final resourcesDir = Directory(
-    p.normalize(p.join(Directory.current.path, '..', 'tool', 'resources')),
+    p.normalize(p.join(Directory.current.path, '..', '..', 'resources')),
   );
 
   test(
-    'tool/resources directory exists',
+    'resources directory exists',
     () {
       expect(
         resourcesDir.existsSync(),
         isTrue,
-        reason: 'tool/resources directory should exist',
+        reason: 'resources directory should exist',
       );
     },
     skip: !resourcesDir.existsSync() ? 'Directory not present' : false,
@@ -33,12 +33,8 @@ void main() {
       .where((e) => e.path.endsWith('.yaml'))
       .cast<File>();
 
-  test('tool/resources contains YAML files', () {
-    expect(
-      yamlFiles,
-      isNotEmpty,
-      reason: 'No YAML files found in tool/resources',
-    );
+  test('resources contains YAML files', () {
+    expect(yamlFiles, isNotEmpty, reason: 'No YAML files found in resources');
   });
 
   final client = http.Client();
