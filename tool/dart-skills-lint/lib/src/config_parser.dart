@@ -7,6 +7,7 @@
 import 'dart:io';
 import 'package:logging/logging.dart';
 import 'package:yaml/yaml.dart';
+import 'models/analysis_severity.dart';
 import 'models/check_type.dart';
 
 final _log = Logger('dart_skills_lint');

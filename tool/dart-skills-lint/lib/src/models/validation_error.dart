@@ -2,7 +2,7 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'check_type.dart';
+import 'analysis_severity.dart';
 
 /// Represents a single validation error found during analysis.
 class ValidationError {

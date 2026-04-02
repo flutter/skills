@@ -11,6 +11,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 
 import 'config_parser.dart';
+import 'models/analysis_severity.dart';
 import 'models/check_type.dart';
 import 'models/ignore_entry.dart';
 import 'models/skills_ignores.dart';

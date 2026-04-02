@@ -4,6 +4,7 @@
 
 import 'dart:io';
 
+import 'package:dart_skills_lint/src/models/analysis_severity.dart';
 import 'package:dart_skills_lint/src/models/check_type.dart';
 import 'package:dart_skills_lint/src/validator.dart';
 import 'package:test/test.dart';

@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+import 'models/analysis_severity.dart';
 import 'models/check_type.dart';
 import 'models/validation_error.dart';
 import 'rules.dart';
