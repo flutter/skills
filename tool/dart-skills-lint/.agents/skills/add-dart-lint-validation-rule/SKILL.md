@@ -1,6 +1,11 @@
-# How-To: Add a New Validation Rule and Flag
+---
+name: add-dart-lint-validation-rule
+description: Instructions for adding a new validation rule and CLI flag to dart-skills-lint.
+---
 
-This guide explains how to add a new validation rule to the `dart_skills_lint` package, expose it as a toggleable CLI flag, and verify its behavior.
+# Add a New Validation Rule and Flag
+
+Use this skill when you need to add a new validation rule to the `dart_skills_lint` package, expose it as a toggleable CLI flag, and verify its behavior.
 
 ---
 
@@ -136,3 +141,6 @@ When a new rule is introduced, verify that you synchronize sibling markdown file
 - [ ] Toggle logic tests added in `test/`.
 - [ ] Usage listed in `README.md`.
 - [ ] Schema documented in `documentation/knowledge/SPECIFICATION.md`.
+- [ ] Run `dart analyze` to ensure no issues.
+- [ ] Run `dart test` to ensure tests passing.
+- [ ] Run `dart format .` to format code.
