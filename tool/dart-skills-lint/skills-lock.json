@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "skills": {
+    "dart-best-practices": {
+      "source": "kevmoo/dash_skills",
+      "sourceType": "github",
+      "computedHash": "c1105a6b1d0a41c9e70eeeb6b1e857b81344ad224a339198dae0749e3b07988c"
+    },
+    "dart-cli-app-best-practices": {
+      "source": "kevmoo/dash_skills",
+      "sourceType": "github",
+      "computedHash": "94fc01ceca36f67a468222041651b536ee87762df05452ce630484969bb63006"
+    },
+    "dart-doc-validation": {
+      "source": "kevmoo/dash_skills",
+      "sourceType": "github",
+      "computedHash": "5b2c3fd7a30ee04b35ef8914ea945efbec49087e4bd99fb211f421a12e43dc2e"
+    },
+    "dart-matcher-best-practices": {
+      "source": "kevmoo/dash_skills",
+      "sourceType": "github",
+      "computedHash": "9a105e76e414500def935665023347e22778d19ef4ad3c543a205b12eb5b0cee"
+    },
+    "dart-modern-features": {
+      "source": "kevmoo/dash_skills",
+      "sourceType": "github",
+      "computedHash": "9b56ee1527bd3c233c74016872bd48bfaec0ec1c9e83f1f2ac590e110cdc3539"
+    },
+    "dart-package-maintenance": {
+      "source": "kevmoo/dash_skills",
+      "sourceType": "github",
+      "computedHash": "1bab37315f9ba1b6f6850a7563d58b5728c14b23a712bd391e3972c8dd84864a"
+    },
+    "dart-test-fundamentals": {
+      "source": "kevmoo/dash_skills",
+      "sourceType": "github",
+      "computedHash": "fee07d6fdcfd2d5f73f055a165a24ff70e4de5fbf36678e95c4d9b299ec5fb5b"
+    },
+    "test-driven-development": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "126f1ebf6ccd414f42544f6e83d8cc5adb089e1108eaffb7c400701e37eecd9f"
+    }
+  }
+}

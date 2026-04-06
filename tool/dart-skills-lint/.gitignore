@@ -1,0 +1,20 @@
+# Dart/Flutter
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+
+# Local Agent Configurations (Machine specific)
+.agent.md
+
+# You might want to ignore pubspec.lock if this is a library package
+# pubspec.lock

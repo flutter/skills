@@ -1,0 +1,16 @@
+{
+  "skills": {
+    "dart-matcher-best-practices": [
+      {
+        "rule_id": "check-relative-paths",
+        "file_name": "SKILL.md"
+      }
+    ],
+    "dart-test-fundamentals": [
+      {
+        "rule_id": "check-relative-paths",
+        "file_name": "SKILL.md"
+      }
+    ]
+  }
+}
