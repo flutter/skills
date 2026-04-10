@@ -46,9 +46,10 @@ To setup validation in your Dart project:
 
    void main() {
      test('Run skills linter', () async {
-       await validateSkills(
+       final isValid = await validateSkills(
          skillDirPaths: ['.agents/skills'],
        );
+       expect(isValid, isTrue);
      });
    }
    ```
