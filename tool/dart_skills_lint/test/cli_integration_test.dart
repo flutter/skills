@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dart_skills_lint/src/entry_point.dart';
+import 'package:dart_skills_lint/src/models/check_type.dart';
 import 'package:dart_skills_lint/src/models/ignore_entry.dart';
 import 'package:dart_skills_lint/src/models/skills_ignores.dart';
 import 'package:dart_skills_lint/src/rule_registry.dart';
@@ -404,7 +405,7 @@ dart_skills_lint:
       final List<String> stdout = await process.stdout.rest.toList();
       final String stdoutStr = stdout.join('\n');
 
-      for (final check in RuleRegistry.allChecks) {
+      for (final CheckType check in RuleRegistry.allChecks) {
         expect(stdoutStr, contains(check.name));
       }
     });
