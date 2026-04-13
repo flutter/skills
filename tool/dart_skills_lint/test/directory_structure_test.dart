@@ -73,6 +73,9 @@ void main() {
         final validator = Validator();
         final ValidationResult validationResult = await validator.validate(skillDir);
 
+        // ignore: avoid_print
+        print(
+            'DEBUG errors: ${validationResult.validationErrors.map((e) => "${e.ruleId}: ${e.message}").toList()}');
         expect(validationResult.isValid, isFalse);
         expect(
             validationResult.validationErrors
@@ -117,6 +120,9 @@ void main() {
         );
         final ValidationResult validationResult = await validator.validate(skillDir);
 
+        // ignore: avoid_print
+        print(
+            'DEBUG errors (override): ${validationResult.validationErrors.map((e) => "${e.ruleId}: ${e.message}").toList()}');
         expect(validationResult.isValid, isTrue);
         expect(
             validationResult.validationErrors.any(
