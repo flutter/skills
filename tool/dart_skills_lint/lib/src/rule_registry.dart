@@ -10,6 +10,7 @@ import 'rules/description_length_rule.dart';
 import 'rules/disallowed_field_rule.dart';
 import 'rules/name_format_rule.dart';
 import 'rules/relative_paths_rule.dart';
+import 'rules/trailing_whitespace_rule.dart';
 import 'rules/valid_yaml_metadata_rule.dart';
 
 /// Registry of all built-in rules.
@@ -43,6 +44,11 @@ class RuleRegistry {
       help: 'Check if relative paths exist.',
     ),
     const CheckType(
+      name: TrailingWhitespaceRule.ruleName,
+      defaultSeverity: TrailingWhitespaceRule.defaultSeverity,
+      help: 'Check for trailing whitespace (allows exactly 2 spaces for line breaks).',
+    ),
+    const CheckType(
       name: ValidYamlMetadataRule.ruleName,
       defaultSeverity: ValidYamlMetadataRule.defaultSeverity,
       help: 'Check if YAML metadata is valid.',
@@ -62,6 +68,8 @@ class RuleRegistry {
         return NameFormatRule(severity: severity);
       case RelativePathsRule.ruleName:
         return RelativePathsRule(severity: severity);
+      case TrailingWhitespaceRule.ruleName:
+        return TrailingWhitespaceRule(severity: severity);
       case ValidYamlMetadataRule.ruleName:
         return ValidYamlMetadataRule(severity: severity);
       default:

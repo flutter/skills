@@ -462,5 +462,31 @@ dart_skills_lint:
       expect(stdoutStr, contains('--- Validating skill: valid-skill ---'));
       expect(stdoutStr, contains('--- Validating skill: contributing ---'));
     });
+
+    test('CLI reports trailing whitespace as error when enabled via config', () async {
+      final Directory skillDir = await Directory('${tempDir.path}/test-skill').create();
+      await File('${skillDir.path}/SKILL.md')
+          .writeAsString('${buildFrontmatter(name: 'test-skill')}Line with 1 space \n');
+
+      final configFile = File('${tempDir.path}/dart_skills_lint.yaml');
+      await configFile.writeAsString('''
+dart_skills_lint:
+  directories:
+    - path: "test-skill"
+      rules:
+        check-trailing-whitespace: error
+''');
+
+      final TestProcess process = await TestProcess.start(
+        'dart',
+        [p.normalize(p.absolute('bin/cli.dart')), '-s', 'test-skill'],
+        workingDirectory: tempDir.path,
+      );
+
+      final List<String> stderr = await process.stderr.rest.toList();
+      final String stderrStr = stderr.join('\n');
+      expect(stderrStr, contains('has 1 trailing space(s)'));
+      await process.shouldExit(1);
+    });
   });
 }

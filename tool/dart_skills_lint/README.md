@@ -73,6 +73,7 @@ If no directory is specified, it automatically checks `.claude/skills` and `.age
 - `-w`, `--print-warnings`: Enable printing of warning messages.
 - `--fast-fail`: Halt execution immediately on the error.
 - `--ignore-config`: Ignore the YAML configuration file entirely.
+- `--[no-]check-trailing-whitespace`: Enable/disable checking for trailing whitespace. (Disabled by default).
 
 ### 2. As a Command Line Tool with a YAML Configuration File
 You can configure the linter using a configuration file (defaulting to `dart_skills_lint.yaml` in the current directory).
@@ -189,6 +190,9 @@ The linter checks against the criteria defined in `documentation/knowledge/SPECI
 - **Skill Name (`name`)**: Max 64 characters, lowercase alphanumeric and hyphens only, no leading/trailing/consecutive hyphens. **Must match the parent directory name.**
 - **Description (`description`)**: Max 1024 characters.
 - **Compatibility (`compatibility`)**: Max 500 characters.
+
+### 4. Content Constraints
+- **Trailing Whitespace**: Lines in `SKILL.md` should not have trailing whitespace. Exactly 2 spaces at the end of a line are allowed to support Markdown hard line breaks, per the [CommonMark Spec](https://spec.commonmark.org/0.30/#hard-line-breaks).
 
 ## Contributing
 

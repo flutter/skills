@@ -47,6 +47,8 @@ or identifiers that cannot be broken.
 
 ## Related Skills
 
-- **[`dart-modern-features`](../dart-modern-features/SKILL.md)**: For idiomatic
+- **[dart-modern-features]**: For idiomatic
   usage of modern Dart features like Pattern Matching (useful for deep JSON
   extraction), Records, and Switch Expressions.
+
+[dart-modern-features]: https://github.com/kevmoo/dash_skills/blob/main/.agent/skills/dart-modern-features/SKILL.md
