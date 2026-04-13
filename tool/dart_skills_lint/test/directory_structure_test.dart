@@ -58,7 +58,8 @@ void main() {
       // Remove read permissions
       ProcessResult result;
       if (Platform.isWindows) {
-        result = await Process.run('icacls', [file.path, '/deny', 'Everyone:(R)']);
+        // Use SID *S-1-1-0 (Everyone) to support non-English Windows locales.
+        result = await Process.run('icacls', [file.path, '/inheritance:r', '/deny', '*S-1-1-0:(R)']);
       } else {
         result = await Process.run('chmod', ['-r', file.path]);
       }
@@ -67,19 +68,23 @@ void main() {
         fail('Failed to change file permissions: ${result.stderr}');
       }
 
-      final validator = Validator();
-      final ValidationResult validationResult = await validator.validate(skillDir);
+      try {
+        final validator = Validator();
+        final ValidationResult validationResult = await validator.validate(skillDir);
 
-      expect(validationResult.isValid, isFalse);
-      expect(
-          validationResult.validationErrors.any((e) => e.ruleId == Validator.skillFileInaccessible),
-          isTrue);
-
-      // Restore permissions so cleanup can delete it
-      if (Platform.isWindows) {
-        await Process.run('icacls', [file.path, '/remove:d', 'Everyone']);
-      } else {
-        await Process.run('chmod', ['+r', file.path]);
+        expect(validationResult.isValid, isFalse);
+        expect(
+            validationResult.validationErrors.any((e) => e.ruleId == Validator.skillFileInaccessible),
+            isTrue);
+      } catch (e, s) {
+        fail('Unexpected exception during validation: $e\n$s');
+      } finally {
+        // Restore permissions so cleanup can delete it
+        if (Platform.isWindows) {
+          await Process.run('icacls', [file.path, '/inheritance:e']);
+        } else {
+          await Process.run('chmod', ['+r', file.path]);
+        }
       }
     });
 
