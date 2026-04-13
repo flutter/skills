@@ -1442,3 +1442,21 @@
   resources:
     - https://codelabs.developers.google.com/flutter-home-screen-widgets#0
     - https://pub.dev/packages/home_widget
+- name: dart-skills-lint-validation
+  description: Validates that AI agent skills meet the specification using
+    dart_skills_lint. Use when checking skill directory structure, metadata, and
+    relative paths in a Dart project or globally.
+  instructions: |
+    Validating skills involves using the `dart_skills_lint` package to ensure
+    they meet the required specification. This process checks for the presence
+    of mandatory files, valid YAML frontmatter, and proper directory structure.
+
+    To validate skills, you can run the linter via the CLI or integrate it into
+    automated tests. If the package is in your project dependencies, use `dart
+    run dart_skills_lint -d <skills-directory>`. If activated globally, use
+    `dart pub global run dart_skills_lint -d <skills-directory>`. You can also
+    import the package and call `validateSkills` in your Dart tests to automate
+    validation. Configuration can be customized using a `dart_skills_lint.yaml`
+    file or programmatically in tests.
+  resources:
+    - ../tool/dart_skills_lint/README.md
