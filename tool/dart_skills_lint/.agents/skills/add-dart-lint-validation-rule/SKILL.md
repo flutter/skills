@@ -11,77 +11,54 @@ Use this skill when you need to add a new validation rule to the `dart_skills_li
 
 ## 🛠️ Step-by-Step Implementation
 
-### 1. Define the Rule in `lib/src/rules.dart`
-
-To create a new rule, add a top-level `CheckType` instance.
-
-```dart
-// lib/src/rules.dart
-
-/// Template instance for checking if the description has a trailing period.
-final descriptionTrailingPeriodCheck = CheckType(
-  name: 'description-trailing-period',
-  defaultSeverity: AnalysisSeverity.error, // or warning/disabled
-);
-```
-
-### 2. Expose the CLI Flag in `lib/src/entry_point.dart`
-
-Modify `runApp` to include the toggleable flag for your new rule.
-
-#### 📋 Register Parser Option
-Add `.addFlag` in `runApp` (around line 60-90):
+### 1. Create the Rule Class
+Create a new file in `lib/src/rules/` extending `SkillRule`.
 
 ```dart
-// lib/src/entry_point.dart
+// lib/src/rules/my_new_rule.dart
 
-parser
-  ..addFlag(descriptionTrailingPeriodCheck.name,
-      negatable: true,
-      defaultsTo: true,
-      help: 'Check if the description ends with a period.');
-```
+import '../models/analysis_severity.dart';
+import '../models/skill_context.dart';
+import '../models/skill_rule.dart';
+import '../models/validation_error.dart';
 
-#### 🎚️ Resolve Flag Logic or Override Severities
-Find where severities are evaluated (around line 140-170) and bind your flag state:
+class MyNewRule extends SkillRule {
+  MyNewRule({super.severity});
 
-```dart
-if (results.wasParsed(descriptionTrailingPeriodCheck.name)) {
-  descriptionTrailingPeriodCheck.severity = (results[descriptionTrailingPeriodCheck.name] as bool)
-      ? descriptionTrailingPeriodCheck.defaultSeverity
-      : AnalysisSeverity.disabled;
-}
-```
-
-Add your rule to the `checkTypes` set if you want it loaded by default configuration overrides.
-
-### 3. Implement Validation in `lib/src/validator.dart`
-
-Write the specific logic inside `Validator` checking the schema.
-
-```dart
-// lib/src/validator.dart
-
-void _validateDescriptionPeriod(String description, List<ValidationError> validationErrors) {
-  if (description.isNotEmpty && !description.endsWith('.')) {
-    validationErrors.add(ValidationError(
-      ruleId: _getRule(descriptionTrailingPeriodCheck).name,
-      file: _skillFileName,
-      message: 'Description must end with a period.',
-      severity: _getRule(descriptionTrailingPeriodCheck).severity,
-    ));
+  @override
+  Future<List<ValidationError>> validate(SkillContext context) async {
+    final errors = <ValidationError>[];
+    // Add validation logic here using context.rawContent or context.directory
+    return errors;
   }
 }
 ```
 
-Invoke your sub-routine inside `_parseMetadataFields`:
+### 2. Register the Rule in `lib/src/rule_registry.dart`
+
+Add a new `CheckType` instance to `RuleRegistry.allChecks`. This automatically exposes it as a CLI flag.
 
 ```dart
-final description = yaml[_descriptionField]?.toString() ?? '';
-if (description.isNotEmpty) {
-  _validateDescriptionPeriod(description, validationErrors);
-}
+// lib/src/rule_registry.dart
+
+static final myNewRuleCheck = CheckType(
+  name: 'my-new-rule',
+  defaultSeverity: AnalysisSeverity.warning, // or error, or disabled
+  help: 'Description of what the rule does for CLI help.',
+  createRule: ({AnalysisSeverity? severity}) => MyNewRule(severity: severity),
+);
 ```
+
+Add it to the `allChecks` list:
+```dart
+static List<CheckType> get allChecks => [
+      // ... other rules
+      myNewRuleCheck,
+    ];
+```
+
+### 3. Handle Disabled by Default Rules (If applicable)
+If the rule is disabled by default (`defaultSeverity: AnalysisSeverity.disabled`), passing the flag `--check-my-new-rule` will automatically enable it with `AnalysisSeverity.error` severity (handled in `entry_point.dart`).
 
 ---
 
@@ -89,35 +66,53 @@ if (description.isNotEmpty) {
 
 You must write automated tests verifying your rule triggers when it should and skips when it shouldn't.
 
-### Creating a Test Suite Case
-Add matching suite files in `test/` (e.g., `test/field_constraints_test.dart` or `test/metadata_validation_test.dart`).
+### Preferred Approach: In-Memory Unit Tests
+Instead of writing files to disk, test the rule directly using a mock `SkillContext`. This is faster and avoids I/O dependencies.
 
 ```dart
-// test/field_constraints_test.dart
+// test/my_new_rule_test.dart
 
-test('triggers error when description does not end with period', () async {
-  final tempDir = createTempSkillDir(
-    name: 'test-skill',
-    description: 'This description does not end with a period',
-  );
+import 'dart:io';
+import 'package:dart_skills_lint/src/models/analysis_severity.dart';
+import 'package:dart_skills_lint/src/models/skill_context.dart';
+import 'package:dart_skills_lint/src/models/validation_error.dart';
+import 'package:dart_skills_lint/src/rules/my_new_rule.dart';
+import 'package:test/test.dart';
 
-  final validator = Validator(rules: {descriptionTrailingPeriodCheck});
-  final result = await validator.validate(tempDir);
+void main() {
+  group('MyNewRule', () {
+    test('flags invalid content', () async {
+      final rule = MyNewRule(severity: AnalysisSeverity.warning);
+      final context = SkillContext(
+        directory: Directory('dummy'),
+        rawContent: 'Invalid content',
+      );
 
-  expect(result.validationErrors.any((e) => e.ruleId == 'description-trailing-period'), isTrue);
-});
-test('skips error when description ends with period', () async {
-  final tempDir = createTempSkillDir(
-    name: 'test-skill',
-    description: 'This description ends with a period.',
-  );
+      final List<ValidationError> errors = await rule.validate(context);
 
-  final validator = Validator(rules: {descriptionTrailingPeriodCheck});
-  final result = await validator.validate(tempDir);
+      expect(errors, isNotEmpty);
+      expect(errors.first.message, contains('Expected error message'));
+    });
 
-  expect(result.validationErrors.any((e) => e.ruleId == 'description-trailing-period'), isFalse);
-});
+    test('passes valid content', () async {
+      final rule = MyNewRule(severity: AnalysisSeverity.warning);
+      final context = SkillContext(
+        directory: Directory('dummy'),
+        rawContent: 'Valid content',
+      );
+
+      final List<ValidationError> errors = await rule.validate(context);
+
+      expect(errors, isEmpty);
+    });
+  });
+}
 ```
+
+### Integration Tests
+If the rule interacts with CLI flags or configuration files, add a test in `test/cli_integration_test.dart` using `TestProcess`.
+> [!IMPORTANT]
+> When writing integration tests that use config files and `TestProcess`, ensure that paths in the config file and paths passed to the CLI match in style (both relative or both absolute) to avoid issues with path matching in `entry_point.dart`.
 
 ---
 
@@ -127,20 +122,18 @@ When a new rule is introduced, verify that you synchronize sibling markdown file
 
 1.  **`README.md`:**
     *   Add your flag under the **Usage** and **Flags** sections so users know it exists.
-    *   Add descriptive lines under **Specification Validation**.
 2.  **`documentation/knowledge/SPECIFICATION.md`:**
-    *   If the rule implements standard specifications traits, add constraints parameters under Section 5.1 (Validation parameters).
+    *   Document the formal constraint in the specification if it defines a standard for skill files.
 
 ---
 
 ## 🚦 Checklist Before Submitting PR
 
-- [ ] Rule defined in `rules.dart`.
-- [ ] Flag registered in `entry_point.dart`.
-- [ ] Logic implemented in `validator.dart`.
-- [ ] Toggle logic tests added in `test/`.
+- [ ] Rule class created in `lib/src/rules/`.
+- [ ] Rule registered in `lib/src/rule_registry.dart`.
+- [ ] Unit tests added in `test/` using in-memory `SkillContext`.
 - [ ] Usage listed in `README.md`.
-- [ ] Schema documented in `documentation/knowledge/SPECIFICATION.md`.
-- [ ] Run `dart analyze` to ensure no issues.
-- [ ] Run `dart test` to ensure tests passing.
+- [ ] Schema documented in `documentation/knowledge/SPECIFICATION.md` (if applicable).
 - [ ] Run `dart format .` to format code.
+- [ ] Run `dart analyze --fatal-infos` to ensure no issues.
+- [ ] Run `dart test` to ensure tests passing.
