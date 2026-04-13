@@ -101,14 +101,14 @@ class Validator {
           ruleId: skillFileInaccessible,
           file: skillMdFile.path,
           message: 'Failed to read $_skillFileName: $e',
-          severity: AnalysisSeverity.error));
+          severity: _getSeverity(skillFileInaccessible, AnalysisSeverity.error)));
       return ValidationResult(validationErrors: validationErrors);
     } catch (e) {
       validationErrors.add(ValidationError(
           ruleId: unexpectedError,
           file: skillMdFile.path,
           message: 'Unexpected error reading $_skillFileName: $e',
-          severity: AnalysisSeverity.error));
+          severity: _getSeverity(unexpectedError, AnalysisSeverity.error)));
       return ValidationResult(validationErrors: validationErrors);
     }
 

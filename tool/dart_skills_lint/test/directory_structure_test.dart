@@ -4,6 +4,7 @@
 
 import 'dart:io';
 
+import 'package:dart_skills_lint/src/models/analysis_severity.dart';
 import 'package:dart_skills_lint/src/validator.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
@@ -58,9 +59,8 @@ void main() {
       // Remove read permissions
       ProcessResult result;
       if (Platform.isWindows) {
-        // Use SID *S-1-1-0 (Everyone) to support non-English Windows locales.
-        result =
-            await Process.run('icacls', [file.path, '/inheritance:r', '/deny', '*S-1-1-0:(R)']);
+        // Remove all inherited permissions to make the file unreadable.
+        result = await Process.run('icacls', [file.path, '/inheritance:r']);
       } else {
         result = await Process.run('chmod', ['-r', file.path]);
       }
@@ -77,6 +77,53 @@ void main() {
         expect(
             validationResult.validationErrors
                 .any((e) => e.ruleId == Validator.skillFileInaccessible),
+            isTrue);
+      } catch (e, s) {
+        fail('Unexpected exception during validation: $e\n$s');
+      } finally {
+        // Restore permissions so cleanup can delete it
+        if (Platform.isWindows) {
+          await Process.run('icacls', [file.path, '/inheritance:e']);
+        } else {
+          await Process.run('chmod', ['+r', file.path]);
+        }
+      }
+    });
+
+    test('obeys skill-file-inaccessible severity override', () async {
+      final skillDir = Directory(p.join(tempDir.path, 'test-skill-override'));
+      await skillDir.create();
+      final file = File(p.join(skillDir.path, 'SKILL.md'));
+      await file.create();
+
+      // Remove read permissions
+      ProcessResult result;
+      if (Platform.isWindows) {
+        // Remove all inherited permissions to make the file unreadable.
+        result = await Process.run('icacls', [file.path, '/inheritance:r']);
+      } else {
+        result = await Process.run('chmod', ['-r', file.path]);
+      }
+
+      if (result.exitCode != 0) {
+        fail('Failed to change file permissions: ${result.stderr}');
+      }
+
+      try {
+        final validator = Validator(
+          ruleOverrides: {
+            Validator.skillFileInaccessible: AnalysisSeverity.warning,
+          },
+        );
+        final ValidationResult validationResult = await validator.validate(skillDir);
+
+        expect(validationResult.isValid, isTrue);
+        expect(
+            validationResult.validationErrors.any(
+              (e) =>
+                  e.ruleId == Validator.skillFileInaccessible &&
+                  e.severity == AnalysisSeverity.warning,
+            ),
             isTrue);
       } catch (e, s) {
         fail('Unexpected exception during validation: $e\n$s');
