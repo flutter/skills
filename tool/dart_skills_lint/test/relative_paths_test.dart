@@ -101,5 +101,22 @@ void main() {
       expect(result.errors, isEmpty);
       expect(result.warnings, isEmpty);
     });
+
+    test('passes with relative path containing line fragments', () async {
+      final Directory skillDir =
+          await Directory('${tempDir.path}/a/b/c/test-skill').create(recursive: true);
+      await File('${skillDir.path}/SKILL.md').writeAsString(
+          '${buildFrontmatter(name: 'test-skill')}[Link to lines](../../../CONTRIBUTING.md#L64-L80)\n');
+
+      await File('${tempDir.path}/a/CONTRIBUTING.md').create(recursive: true);
+
+      final validator =
+          Validator(ruleOverrides: {RelativePathsRule.ruleName: AnalysisSeverity.warning});
+      final ValidationResult result = await validator.validate(skillDir);
+
+      expect(result.isValid, isTrue);
+      expect(result.errors, isEmpty);
+      expect(result.warnings, isEmpty);
+    });
   });
 }

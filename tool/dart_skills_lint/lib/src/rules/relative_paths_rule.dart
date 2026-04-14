@@ -42,16 +42,18 @@ class RelativePathsRule extends SkillRule {
         continue;
       }
 
+      var effectivePath = path;
       try {
         final Uri uri = Uri.parse(path);
         if (uri.hasScheme || path.startsWith('#')) {
           continue; // Ignore web URLs, email links, anchors, etc.
         }
+        effectivePath = uri.path;
       } catch (_) {
         // If Uri parsing fails, treat it as a potential filepath.
       }
 
-      final linkedFile = File(join(context.directory.path, path));
+      final linkedFile = File(join(context.directory.path, effectivePath));
       if (!linkedFile.existsSync()) {
         errors.add(ValidationError(
           ruleId: name,
