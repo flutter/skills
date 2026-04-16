@@ -54,15 +54,33 @@ Setup validation in your Dart project:
 
    Example `test/lint_skills_test.dart`:
    ```dart
+   import 'dart:async';
    import 'package:dart_skills_lint/dart_skills_lint.dart';
+   import 'package:logging/logging.dart';
    import 'package:test/test.dart';
 
    void main() {
      test('Run skills linter', () async {
-       final isValid = await validateSkills(
-         skillDirPaths: ['.agents/skills'],
-       );
-       expect(isValid, isTrue);
+       // Enable logging to see detailed validation errors in test output.
+       final Level oldLevel = Logger.root.level;
+       Logger.root.level = Level.ALL;
+       final StreamSubscription<LogRecord> subscription =
+           Logger.root.onRecord.listen((record) => print(record.message));
+
+       try {
+         final isValid = await validateSkills(
+           skillDirPaths: ['.agents/skills'],
+           resolvedRules: {
+             'check-relative-paths': AnalysisSeverity.error,
+             'check-absolute-paths': AnalysisSeverity.error,
+             'check-trailing-whitespace': AnalysisSeverity.error,
+           },
+         );
+         expect(isValid, isTrue, reason: 'Skills validation failed. See above for details.');
+       } finally {
+         Logger.root.level = oldLevel;
+         await subscription.cancel();
+       }
      });
    }
    ```
@@ -77,6 +95,29 @@ Setup validation in your Dart project:
      directories:
        - path: ".agents/skills"
    ```
+
+## Initial Integration in a Repository
+
+When adding `dart_skills_lint` to a repository for the first time, follow these best practices based on real-world integration:
+
+### 1. Workspace Dependency Management
+If your repository is a workspace with multiple packages:
+- **Isolate the dependency**: Add `dart_skills_lint` to the specific package that handles tooling or tests (e.g., `tool/pubspec.yaml`) rather than the root `pubspec.yaml`, unless it is strictly needed at the root level.
+- **Keep hashes in sync**: If you must add it to multiple `pubspec.yaml` files (e.g., root and a tool package), ensure the `ref` (commit hash) is identical to avoid resolution conflicts.
+
+### 2. Configuration File Location
+- Place `dart_skills_lint.yaml` in the directory from which you plan to run the command (e.g., inside `tool/` if that's where your setup lives).
+- **Update relative paths**: Ensure the `path` entries in the config file are relative to that directory (e.g., `../.agents/skills` if running from `tool/` to target a folder in the repository root).
+
+### 3. Generating a Baseline
+If you are integrating the linter into a repository with existing skills that may have legacy errors or false positives:
+- Use the baseline feature to ignore existing issues and start with a clean run.
+- Run:
+  ```bash
+  dart run dart_skills_lint:cli --skills-directory=.agents/skills --generate-baseline
+  ```
+- This will create a `dart_skills_lint_ignore.json` file.
+- **Note on False Positives**: The linter currently evaluates links inside markdown code blocks. If your skill documentation includes examples with placeholder links or images, they might be flagged as broken. Use the baseline file to ignore these specific false positives.
 
 ## Authoring Custom Rules
 To author custom rules, extend the `SkillRule` class and pass them to `validateSkills`.
