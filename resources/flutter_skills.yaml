@@ -315,3 +315,56 @@
     - https://docs.flutter.dev/testing/integration-tests
     - https://docs.flutter.dev/testing/overview
     - https://docs.flutter.dev/testing/testing-plugins
+- name: flutter-setup-localization
+  description: Add `flutter_localizations` and `intl` dependencies, enable
+    "generate true" in `pubspec.yaml`, and create an `l10n.yaml` configuration
+    file. Use when initializing localization support for a new Flutter project.
+  instructions: |
+    1.  **Add `flutter_localizations` and `intl` dependencies**:
+        *   Add `flutter_localizations` and `intl` packages to your `pubspec.yaml` file. You can do this by running `$ flutter pub add flutter_localizations --sdk=flutter` and `$ flutter pub add intl:any`.
+        *   The `flutter_localizations` package is a Flutter SDK package that enables the localization of ARB files and is often used with the `intl` package.
+        *   After adding the packages, your `pubspec.yaml` file should include entries like:
+            ```yaml
+            dependencies:
+            flutter:
+                sdk: flutter
+            flutter_localizations:
+                sdk: flutter
+            intl: any
+            ```
+        
+        *   After adding a package dependency, run `flutter pub get` in your terminal to install it.
+
+    2.  **Enable `generate: true` in `pubspec.yaml`**:
+        *   Open your `pubspec.yaml` file.
+        *   In the `flutter` section, add `generate: true`. This flag handles localization tasks.
+        *   The `flutter` section in `pubspec.yaml` is specific to Flutter.
+
+    3.  **Create an `l10n.yaml` configuration file**:
+        *   Add a new YAML file named `l10n.yaml` to the root directory of your Flutter project.
+        *   This file can be used to specify options like `synthetic-package: false` to generate localized messages directly into source files instead of a synthetic package. You can also specify `arb-dir` or `output-dir` in this file.
+
+    4.  **Configure `MaterialApp` or `CupertinoApp`**:
+        *   Import the `flutter_localizations` library.
+        *   Specify `localizationsDelegates` and `supportedLocales` for your `MaterialApp` or `CupertinoApp`. For example:
+            ```dart
+            import 'package:flutter_localizations/flutter_localizations.dart';
+            // ...
+            return const MaterialApp(
+            title: 'Localizations Sample App',
+            localizationsDelegates: [
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: [
+                Locale('en'), // English
+                Locale('es'), // Spanish
+            ],
+            home: MyHomePage(),
+            );
+            ```
+        
+        *   After these steps, Material and Cupertino packages should be correctly localized in the supported locales, and widgets should adapt to localized messages and layout.
+  resources:
+    - https://docs.flutter.dev/ui/internationalization
