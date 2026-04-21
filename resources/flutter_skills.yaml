@@ -368,3 +368,39 @@
         *   After these steps, Material and Cupertino packages should be correctly localized in the supported locales, and widgets should adapt to localized messages and layout.
   resources:
     - https://docs.flutter.dev/ui/internationalization
+- name: flutter-use-http-package
+  description: Use the `http` package to execute GET, POST, PUT, or DELETE
+    requests. Use when you need to fetch from or send data to a REST API.
+  instructions: |
+    1.  **Add the `http` package as a dependency**.
+        *   Run `flutter pub add http` in your terminal.
+    2.  **Import the `http` package**.
+        *   Add `import 'package:http/http.dart' as http;` to your Dart file.
+    3.  **Configure platform-specific permissions (if deploying to Android or macOS)**.
+        *   For Android, add the Internet permission to your `AndroidManifest.xml` file: `<uses-permission android:name="android.permission.INTERNET" />`.
+        *   For macOS, include the network client entitlement in `macos/Runner/DebugProfile.entitlements` and `macos/Runner/Release.entitlements` files: `<key>com.apple.security.network.client</key><true/>`.
+    4.  **Make a network request**.
+        *   The `http` package provides methods for GET, POST, PUT, and DELETE operations.
+        *   For example, to make a GET request, use `http.get(Uri.parse('your_url'))`.
+        *   To make a POST request, use `http.post()`.
+        *   To make a PUT request, use `http.put()`.
+        *   You can add authorization headers to your requests using the `headers` parameter. For example: `headers: {HttpHeaders.authorizationHeader: 'Basic your_api_token_here'}`.
+        *   For POST requests, you might need to set `Content-Type` headers and encode the body as JSON.
+    5.  **Handle the response**.
+        *   The `http.Response` object contains the server's response.
+        *   Check the `statusCode` of the response to determine success or failure (e.g., `200 OK` for success, `201 CREATED` for a successful POST).
+        *   Parse the JSON response if applicable.
+        *   Convert the response into a custom Dart object.
+        *   Handle errors by throwing exceptions, especially for non-success status codes, to prevent indefinite loading indicators.
+    6.  **Display the data with Flutter**.
+        *   Use widgets like `FutureBuilder` to display data fetched asynchronously and handle loading and error states.
+        *   For long-running tasks, consider showing a `ProgressIndicator` widget.
+        *   For expensive computations like JSON parsing, perform them in a separate Isolate to avoid UI jank.
+  resources:
+    - https://docs.flutter.dev/cookbook/networking/authenticated-requests
+    - https://docs.flutter.dev/cookbook/networking/background-parsing
+    - https://docs.flutter.dev/cookbook/networking/delete-data
+    - https://docs.flutter.dev/cookbook/networking/fetch-data
+    - https://docs.flutter.dev/cookbook/networking/send-data
+    - https://docs.flutter.dev/cookbook/networking/update-data
+    - https://docs.flutter.dev/get-started/fundamentals/networking
