@@ -124,3 +124,54 @@
     *   Alternatively, the previewer can be started from the command line by navigating to the Flutter project's root directory and running `flutter widget-preview start`. This command launches a local server and opens a Widget Preview environment in Chrome that updates automatically with project changes.
   resources:
     - https://docs.flutter.dev/tools/widget-previewer
+- name: flutter-apply-architecture-best-practices
+  description: Architects a Flutter application using the recommended layered
+    approach (UI, Logic, Data). Use when structuring a new project or
+    refactoring for scalability.
+  instructions: |
+    **1. Understand the Core Principles and Layers:**
+    *   **Separation of Concerns** is the most important principle to follow when designing your Flutter app. This principle makes your code less error-prone by keeping widgets "dumb".
+    *   Flutter applications should be written in **layers**. Layered architecture organizes an application into distinct layers, each with specific roles and responsibilities.
+    *   Typically, applications are separated into 2 to 3 layers, depending on complexity. The three common layers are the UI layer, logic layer, and data layer.
+    *   The Flutter team strongly recommends using clearly defined **data and UI layers**.
+    *   Within each layer, further separate your application by **feature or functionality**. For example, authentication logic should be in a different class than search logic.
+
+    **2. Structure the UI Layer:**
+    *   The **UI layer** displays data to the user that is exposed by the business logic layer, and handles user interaction. It is also commonly referred to as the 'presentation layer'.
+    *   The UI layer contains separate classes for UI logic and widgets.
+    *   Use **ViewModels and Views** in the UI layer. Views and ViewModels make up the UI layer of an application.
+    *   Implement the **MVVM architectural pattern** (Model-View-ViewModel) in the UI layer. MVVM separates a feature into three parts: Model, ViewModel, and View.
+    *   Write **reusable, lean widgets** that hold as little logic as possible. Do not put logic in widgets.
+    *   Use **ChangeNotifiers and Listenables** to handle widget updates. The ChangeNotifier API is part of the Flutter SDK and is a convenient way for widgets to observe changes in ViewModels.
+
+    **3. Structure the Logic Layer (Optional):**
+    *   The **Logic layer** implements core business logic and facilitates interaction between the data layer and UI layer. It is commonly known as the 'domain layer'.
+    *   This layer is **optional** and only needs to be implemented if your application has complex business logic that happens on the client. Many apps are only concerned with presenting and changing data (CRUD apps).
+
+    **4. Structure the Data Layer:**
+    *   The **data layer** exposes application data to the rest of the app and contains most of the business logic.
+    *   Use the **repository pattern** in the data layer. This pattern isolates data access logic from the rest of the application, creating an abstraction layer between business logic and underlying data storage mechanisms (databases, APIs, file systems, etc.).
+    *   In practice, this means creating **Repository classes and Service classes**.
+    *   Repositories and services represent the data of an application, or the model layer of MVVM.
+    *   Services interact with external APIs, such as client servers and platform plugins.
+
+    **5. Project Organization and Best Practices:**
+    *   A single feature in an application might require a View, a ViewModel, one or more Repositories, and zero or more Services.
+    *   Well-organized code is easier for multiple engineers to work on with minimal code conflicts and is easier for new engineers to navigate and understand.
+    *   These recommendations are guidelines, not steadfast rules, and should be adapted to your unique requirements.
+    *   The Flutter team strongly recommends implementing these practices when starting a new application and strongly considering refactoring existing apps unless it fundamentally clashes with the current approach.
+
+  resources:
+    - https://docs.flutter.dev/app-architecture
+    - https://docs.flutter.dev/app-architecture/case-study
+    - https://docs.flutter.dev/app-architecture/case-study/data-layer
+    - https://docs.flutter.dev/app-architecture/case-study/ui-layer
+    - https://docs.flutter.dev/app-architecture/concepts
+    - https://docs.flutter.dev/app-architecture/design-patterns
+    - https://docs.flutter.dev/app-architecture/guide
+    - https://docs.flutter.dev/app-architecture/recommendations
+    - https://docs.flutter.dev/learn/pathway/how-flutter-works
+    - https://docs.flutter.dev/reference/create-new-app
+    - https://docs.flutter.dev/resources/architectural-overview
+    - https://docs.flutter.dev/resources/faq
+    - https://docs.flutter.dev/ui/layout/tutorial
