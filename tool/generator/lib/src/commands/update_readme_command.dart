@@ -14,7 +14,12 @@ import 'base_yaml_command.dart';
 class UpdateReadmeCommand extends BaseYamlCommand {
   /// Creates a new [UpdateReadmeCommand].
   UpdateReadmeCommand({super.outputDir})
-    : super(logger: Logger('UpdateReadmeCommand'));
+    : super(logger: Logger('UpdateReadmeCommand')) {
+    argParser.addOption(
+      'readme',
+      help: 'Path to the README.md file to update.',
+    );
+  }
 
   @override
   String get name => 'update-readme';
@@ -29,9 +34,23 @@ class UpdateReadmeCommand extends BaseYamlCommand {
     Directory outputDir, {
     Directory? configDir,
   }) async {
-    final readmePath = argResults!.rest.length > 1
-        ? argResults!.rest[1]
-        : '../README.md';
+    String readmePath;
+    if (argResults?['readme'] != null) {
+      readmePath = argResults!['readme'] as String;
+    } else if (argResults!.rest.length > 1) {
+      readmePath = argResults!.rest[1];
+    } else {
+      final dirReadme = File(p.join(outputDir.path, 'README.md'));
+      final parentReadme = File(p.join(outputDir.parent.path, 'README.md'));
+
+      if (dirReadme.existsSync()) {
+        readmePath = dirReadme.path;
+      } else if (parentReadme.existsSync()) {
+        readmePath = parentReadme.path;
+      } else {
+        readmePath = '../README.md';
+      }
+    }
 
     final readmeFile = File(readmePath);
 
