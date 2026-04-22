@@ -144,7 +144,7 @@ class _PhotoGalleryState extends State<PhotoGallery> {
   void initState() {
     super.initState();
     // Initialize Future once to prevent re-fetching on rebuilds
-    _futurePhotos = fetchPhotos(http.Client());
+    _futurePhotos = fetchPhotos();
   }
 
   @override
