@@ -27,7 +27,7 @@ Use the Flutter Widget Previewer to render widgets in real-time, isolated from t
 
 Adhere to the following constraints when authoring previewable widgets, as the Widget Previewer runs in a web environment:
 
-- **No Native APIs:** Do not use native plugins or APIs from `dart:io` or `dart:ffi`. Widgets with transitive dependencies on `dart:io` will throw exceptions upon invocation, and `dart:ffi` dependencies will fail to load. Use conditional imports to mock or bypass these in preview mode.
+- **No Native APIs:** Do not use native plugins or APIs from `dart:io` or `dart:ffi`. Widgets with transitive dependencies on `dart:io` or `dart:ffi` will throw exceptions upon invocation. Use conditional imports to mock or bypass these in preview mode.
 - **Asset Paths:** Use package-based paths for assets loaded via `dart:ui` `fromAsset` APIs (e.g., `packages/my_package_name/assets/my_image.png` instead of `assets/my_image.png`).
 - **Public Callbacks:** Ensure all callback arguments provided to preview annotations are public and constant to satisfy code generation requirements.
 - **Constraints:** Apply explicit constraints using the `size` parameter in the `@Preview` annotation if your widget is unconstrained, as the previewer defaults to constraining them to approximately half the viewport.
