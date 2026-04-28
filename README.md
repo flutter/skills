@@ -4,7 +4,7 @@
 
 A collection of skills providing tailored instructions for common Flutter app development workflows. By giving the agent actual domain expertise and repeatable workflows, you drastically reduce mistakes and ensure agents reliably complete the task.
 
-Skills are essentially simple folders of files that can be seen as  complementary to MCP, where MCP gives an agent access to specialized tools and a Skill teaches the agent “how” to use tools for a specific task.
+Skills are essentially simple folders of files that can be seen as complementary to MCP, where MCP gives an agent access to specialized tools and a Skill teaches the agent “how” to use tools for a specific task.
 
 
 ## Installation
