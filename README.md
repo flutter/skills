@@ -1,15 +1,26 @@
-# Agent Skills for Flutter
+# Flutter Agent Skills
 
 **NOTE: This repository is currently in development and is not yet ready for use.**
 
-This repository contains agent skills for Flutter.
+A collection of skills providing tailored instructions for common Flutter app development workflows. By giving the agent actual domain expertise and repeatable workflows, you drastically reduce mistakes and ensure agents reliably complete the task.
+
+Skills are essentially simple folders of files that can be seen as  complementary to MCP, where MCP gives an agent access to specialized tools and a Skill teaches the agent “how” to use tools for a specific task.
+
 
 ## Installation
 
-To install the skills into your project, run the following command:
+To install the skills into your project, try one of the following options:
+
+The most common way is to use the following command:
 
 ```bash
 npx skills add flutter/skills
+```
+
+To ensure the skills are added in the standard `.agents/skills`, use the following:
+
+```bash
+npx skills add flutter/skills --skill '*' --agent universal
 ```
 
 ## Updating Skills
@@ -37,7 +48,7 @@ npx skills update flutter/skills
 | [flutter-use-http-package](skills/flutter-use-http-package/SKILL.md) | Use the `http` package to execute GET, POST, PUT, or DELETE requests. Use when you need to fetch from or send data to a REST API. |
 ## Contributing
 
-To contribute skills, see the instructions in [tool/generator/README.md](tool/generator/README.md).
+We aren't accepting pull requests at this time, but we would love to hear your feedback! 
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
 
