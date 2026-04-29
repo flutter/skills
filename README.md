@@ -6,12 +6,12 @@ You can also install the [Agent Skills for Dart](https://github.com/dart-lang/sk
 
 ## Installation
 
-To install the skills into your project, try one of the following options:
-
-The most common way is to use the following command:
+To install all skills into your project, run the following command. 
+The `--agent universal` flag puts it in the standard `.agents/skills` 
+folder that most agents use.
 
 ```bash
-npx skills add flutter/skills
+npx skills add flutter/skills --skill '*' --agent universal
 ```
 
 To ensure the skills are added in the standard `.agents/skills`, use the following:
@@ -25,7 +25,7 @@ npx skills add flutter/skills --skill '*' --agent universal
 To update, run the following command:
 
 ```bash
-npx skills update flutter/skills
+npx skills update
 ```
 
 ## Available Skills
