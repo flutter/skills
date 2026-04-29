@@ -6,7 +6,9 @@ This repository contains agent skills for Flutter.
 
 ## Installation
 
-To install the skills into your project, run the following command:
+To install all skills into your project, run the following command. 
+The `--agent universal` flag puts it in the standard `.agents/skills` 
+folder that most agents use.
 
 ```bash
 npx skills add flutter/skills --skill '*' --agent universal
