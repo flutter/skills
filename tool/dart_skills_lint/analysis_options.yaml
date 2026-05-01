@@ -277,6 +277,7 @@ dart_code_linter:
     - avoid-unnecessary-type-assertions
     - avoid-unnecessary-type-casts
     - avoid-unrelated-type-assertions
+    - avoid-collection-methods-with-unrelated-types
 
     # Predictable structure
     - avoid-nested-conditional-expressions
@@ -285,8 +286,11 @@ dart_code_linter:
     - no-empty-block
     - avoid-redundant-async
     - avoid-passing-async-when-sync-expected
+    - avoid-late-keyword
+    - prefer-named-record-fields
 
     # Clean up
     - avoid-unused-parameters
     - prefer-moving-to-variable
     - prefer-match-file-name
+    - always-remove-listener

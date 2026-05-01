@@ -23,9 +23,7 @@ final _log = Logger('dart_skills_lint');
 class Validator {
   Validator({Map<String, AnalysisSeverity>? ruleOverrides, List<SkillRule>? customRules})
     : _customSeverities = ruleOverrides ?? {},
-      _customRules = customRules ?? [] {
-    _rules = _buildRules();
-  }
+      _rules = _buildRules(ruleOverrides ?? {}, customRules ?? []);
   static const String _skillFileName = SkillContext.skillFileName;
 
   /// The name of the special check for missing files or directories.
@@ -38,8 +36,7 @@ class Validator {
   static const String unexpectedError = 'unexpected-error';
 
   final Map<String, AnalysisSeverity> _customSeverities;
-  final List<SkillRule> _customRules;
-  late final List<SkillRule> _rules;
+  final List<SkillRule> _rules;
 
   /// Returns the rules used by this validator.
   List<SkillRule> get rules => _rules;
@@ -127,7 +124,10 @@ class Validator {
     return ValidationResult(validationErrors: validationErrors, context: context);
   }
 
-  List<SkillRule> _buildRules() {
+  static List<SkillRule> _buildRules(
+    Map<String, AnalysisSeverity> customSeverities,
+    List<SkillRule> customRules,
+  ) {
     final rules = <SkillRule>[];
     final seenNames = <String>{};
 
@@ -142,14 +142,14 @@ class Validator {
     }
 
     for (final CheckType check in RuleRegistry.allChecks) {
-      final AnalysisSeverity severity = _getSeverity(check.name, check.defaultSeverity);
+      final AnalysisSeverity severity = customSeverities[check.name] ?? check.defaultSeverity;
       final SkillRule? rule = RuleRegistry.createRule(check.name, severity);
       if (rule != null) {
         addRule(rule);
       }
     }
 
-    _customRules.forEach(addRule);
+    customRules.forEach(addRule);
 
     return rules;
   }

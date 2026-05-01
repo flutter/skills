@@ -42,8 +42,9 @@ class DisallowedFieldRule extends SkillRule {
     }
 
     final YamlMap yaml = context.parsedYaml!;
-    for (final Object key in yaml.keys.cast<Object>()) {
-      if (!_allowedFields.contains(key)) {
+    for (final Object? key in yaml.keys) {
+      final bool isDisallowed = key is! String || !_allowedFields.contains(key);
+      if (isDisallowed) {
         errors.add(
           ValidationError(
             ruleId: name,

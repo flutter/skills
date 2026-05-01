@@ -295,7 +295,7 @@ Future<bool> validateSkillsInternal({
   var anySkillsValidated = false;
 
   // 1. Process individual --skill (-s) paths
-  final (bool individualSkillsFailed, bool individualSkillsValidated) = await _processSkillPaths(
+  final ({bool globalAnyFailed, bool anySkillsValidated}) result = await _processSkillPaths(
     individualSkillPaths: individualSkillPaths,
     quiet: quiet,
     config: config,
@@ -308,32 +308,30 @@ Future<bool> validateSkillsInternal({
     fixApply: fixApply,
     fastFail: fastFail,
   );
-  globalAnyFailed = individualSkillsFailed;
-  anySkillsValidated = individualSkillsValidated;
+  globalAnyFailed = result.globalAnyFailed;
+  anySkillsValidated = result.anySkillsValidated;
 
   if (globalAnyFailed && fastFail) {
     return false;
   }
 
   // 2. Process --skills-directory (-d) roots
-  final (
-    bool directorySkillsFailed,
-    bool directorySkillsValidated,
-  ) = await _processSkillDirectories(
-    skillDirPaths: skillDirPaths,
-    quiet: quiet,
-    config: config,
-    resolvedRules: resolvedRules,
-    ignoreFileOverride: ignoreFileOverride,
-    customRules: customRules,
-    printWarnings: printWarnings,
-    generateBaseline: generateBaseline,
-    fix: fix,
-    fixApply: fixApply,
-    fastFail: fastFail,
-  );
-  globalAnyFailed = globalAnyFailed || directorySkillsFailed;
-  anySkillsValidated = anySkillsValidated || directorySkillsValidated;
+  final ({bool globalAnyFailed, bool anySkillsValidated}) dirResult =
+      await _processSkillDirectories(
+        skillDirPaths: skillDirPaths,
+        quiet: quiet,
+        config: config,
+        resolvedRules: resolvedRules,
+        ignoreFileOverride: ignoreFileOverride,
+        customRules: customRules,
+        printWarnings: printWarnings,
+        generateBaseline: generateBaseline,
+        fix: fix,
+        fixApply: fixApply,
+        fastFail: fastFail,
+      );
+  globalAnyFailed = globalAnyFailed || dirResult.globalAnyFailed;
+  anySkillsValidated = anySkillsValidated || dirResult.anySkillsValidated;
 
   if (!anySkillsValidated) {
     var foundSingleSkillPassedToD = false;
@@ -360,7 +358,7 @@ Future<bool> validateSkillsInternal({
   return !globalAnyFailed;
 }
 
-Future<(bool globalAnyFailed, bool anySkillsValidated)> _processSkillPaths({
+Future<({bool globalAnyFailed, bool anySkillsValidated})> _processSkillPaths({
   required List<String> individualSkillPaths,
   required bool quiet,
   required Configuration config,
@@ -441,10 +439,10 @@ Future<(bool globalAnyFailed, bool anySkillsValidated)> _processSkillPaths({
       }
     }
   }
-  return (globalAnyFailed, anySkillsValidated);
+  return (globalAnyFailed: globalAnyFailed, anySkillsValidated: anySkillsValidated);
 }
 
-Future<(bool globalAnyFailed, bool anySkillsValidated)> _processSkillDirectories({
+Future<({bool globalAnyFailed, bool anySkillsValidated})> _processSkillDirectories({
   required List<String> skillDirPaths,
   required bool quiet,
   required Configuration config,
@@ -545,7 +543,7 @@ Future<(bool globalAnyFailed, bool anySkillsValidated)> _processSkillDirectories
       break;
     }
   }
-  return (globalAnyFailed, anySkillsValidated);
+  return (globalAnyFailed: globalAnyFailed, anySkillsValidated: anySkillsValidated);
 }
 
 @visibleForTesting

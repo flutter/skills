@@ -60,9 +60,9 @@ void main() {
 
     test('individual skill baseline is loaded on subsequent runs', () async {
       final Directory skillDir = await Directory('${tempDir.path}/test-skill').create();
-      await File('${skillDir.path}/SKILL.md').writeAsString(
-        '${buildFrontmatter(name: 'test-skill')}[Link](missing.md)\n',
-      );
+      await File(
+        '${skillDir.path}/SKILL.md',
+      ).writeAsString('${buildFrontmatter(name: 'test-skill')}[Link](missing.md)\n');
 
       final TestProcess genProcess = await TestProcess.start('dart', [
         'bin/cli.dart',
