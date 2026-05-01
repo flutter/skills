@@ -20,19 +20,13 @@ Create a new file in `lib/src/rules/` extending `SkillRule`.
 ```dart
 // lib/src/rules/my_new_rule.dart
 
-import 'package:dart_skills_lint/dart_skills_lint.dart';
+import '../models/analysis_severity.dart';
+import '../models/skill_context.dart';
+import '../models/skill_rule.dart';
+import '../models/validation_error.dart';
 
 class MyNewRule extends SkillRule {
-  MyNewRule({this.severity = defaultSeverity});
-
-  static const String ruleName = 'my-new-rule';
-  static const AnalysisSeverity defaultSeverity = AnalysisSeverity.warning;
-
-  @override
-  String get name => ruleName;
-
-  @override
-  final AnalysisSeverity severity;
+  MyNewRule({super.severity});
 
   @override
   Future<List<ValidationError>> validate(SkillContext context) async {
@@ -107,37 +101,12 @@ Instead of writing files to disk, test the rule directly using a mock `SkillCont
 // test/my_new_rule_test.dart
 
 import 'dart:io';
-import 'package:dart_skills_lint/dart_skills_lint.dart';
+import 'package:dart_skills_lint/src/models/analysis_severity.dart';
+import 'package:dart_skills_lint/src/models/skill_context.dart';
+import 'package:dart_skills_lint/src/models/validation_error.dart';
+import 'package:dart_skills_lint/src/rules/my_new_rule.dart';
 import 'package:test/test.dart';
 
-class MyNewRule extends SkillRule {
-  MyNewRule({this.severity = defaultSeverity});
-
-  static const String ruleName = 'my-new-rule';
-  static const AnalysisSeverity defaultSeverity = AnalysisSeverity.warning;
-
-  @override
-  String get name => ruleName;
-
-  @override
-  final AnalysisSeverity severity;
-
-  @override
-  Future<List<ValidationError>> validate(SkillContext context) async {
-    final errors = <ValidationError>[];
-    if (context.rawContent == 'Invalid content') {
-      errors.add(ValidationError(
-        ruleId: name,
-        severity: severity,
-        file: 'SKILL.md',
-        message: 'Expected error message',
-      ));
-    }
-    return errors;
-  }
-}
-
-// Note: In a real project, this main function would be in a separate test file (e.g., test/my_new_rule_test.dart).
 void main() {
   group('MyNewRule', () {
     test('flags invalid content', () async {

@@ -4,7 +4,6 @@
 .flutter-plugins
 .flutter-plugins-dependencies
 build/
-.popmark/
 
 # IDE files
 .vscode/
