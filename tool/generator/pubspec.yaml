@@ -1,6 +1,7 @@
 name: skills
 description: A command-line application for creating and validating Agent Skills.
 version: 0.0.1
+resolution: workspace
 
 environment:
   sdk: ^3.10.8
@@ -10,7 +11,7 @@ dependencies:
   args: ^2.7.0
   file: ^7.0.1
   glob: ^2.1.3
-  google_cloud_ai_generativelanguage_v1beta: ^0.4.0
+  google_cloud_ai_generativelanguage_v1beta: ^0.5.2
   googleapis_auth: ^2.0.0
   html: ^0.15.6
   http: ^1.6.0
