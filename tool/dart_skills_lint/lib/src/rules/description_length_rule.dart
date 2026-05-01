@@ -33,13 +33,15 @@ class DescriptionLengthRule extends SkillRule {
     final String description = yaml['description']?.toString() ?? '';
 
     if (description.length > maxDescriptionLength) {
-      errors.add(ValidationError(
-        ruleId: name,
-        severity: severity,
-        file: _skillFileName,
-        message:
-            'Description field is too long. Maximum $maxDescriptionLength characters (see $_descriptionFieldUrl)',
-      ));
+      errors.add(
+        ValidationError(
+          ruleId: name,
+          severity: severity,
+          file: _skillFileName,
+          message:
+              'Description field is too long. Maximum $maxDescriptionLength characters (see $_descriptionFieldUrl)',
+        ),
+      );
     }
 
     return errors;

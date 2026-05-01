@@ -44,12 +44,14 @@ class DisallowedFieldRule extends SkillRule {
     final YamlMap yaml = context.parsedYaml!;
     for (final Object key in yaml.keys.cast<Object>()) {
       if (!_allowedFields.contains(key)) {
-        errors.add(ValidationError(
-          ruleId: name,
-          severity: severity,
-          file: _skillFileName,
-          message: 'Disallowed field: $key (see $_metadataUrl)',
-        ));
+        errors.add(
+          ValidationError(
+            ruleId: name,
+            severity: severity,
+            file: _skillFileName,
+            message: 'Disallowed field: $key (see $_metadataUrl)',
+          ),
+        );
       }
     }
 

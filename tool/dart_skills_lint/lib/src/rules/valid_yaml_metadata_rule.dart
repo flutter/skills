@@ -28,38 +28,44 @@ class ValidYamlMetadataRule extends SkillRule {
     final errors = <ValidationError>[];
 
     if (context.parsedYaml == null) {
-      errors.add(ValidationError(
-        ruleId: name,
-        severity: severity,
-        file: _skillFileName,
-        message:
-            'Invalid YAML metadata: ${context.yamlParsingError ?? 'Missing or invalid'} (see $_metadataUrl)',
-      ));
+      errors.add(
+        ValidationError(
+          ruleId: name,
+          severity: severity,
+          file: _skillFileName,
+          message:
+              'Invalid YAML metadata: ${context.yamlParsingError ?? 'Missing or invalid'} (see $_metadataUrl)',
+        ),
+      );
       return errors;
     }
 
     final YamlMap yaml = context.parsedYaml!;
     for (final String field in _requiredFields) {
       if (!yaml.containsKey(field)) {
-        errors.add(ValidationError(
-          ruleId: name,
-          severity: severity,
-          file: _skillFileName,
-          message: 'Missing required field: $field (see $_metadataUrl)',
-        ));
+        errors.add(
+          ValidationError(
+            ruleId: name,
+            severity: severity,
+            file: _skillFileName,
+            message: 'Missing required field: $field (see $_metadataUrl)',
+          ),
+        );
       }
     }
 
     if (yaml.containsKey('compatibility')) {
       final String compatibility = yaml['compatibility']?.toString() ?? '';
       if (compatibility.length > maxCompatibilityLength) {
-        errors.add(ValidationError(
-          ruleId: name,
-          severity: severity,
-          file: _skillFileName,
-          message:
-              'Compatibility field is too long. Maximum $maxCompatibilityLength characters (see $_compatibilityFieldUrl)',
-        ));
+        errors.add(
+          ValidationError(
+            ruleId: name,
+            severity: severity,
+            file: _skillFileName,
+            message:
+                'Compatibility field is too long. Maximum $maxCompatibilityLength characters (see $_compatibilityFieldUrl)',
+          ),
+        );
       }
     }
 

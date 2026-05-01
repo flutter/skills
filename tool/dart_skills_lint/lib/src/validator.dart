@@ -47,20 +47,18 @@ class ValidationResult {
 
   /// A list of warning messages for suboptimal setups or recommendations.
   List<String> get warnings => [
-        ..._manualWarnings,
-        ...validationErrors
-            .where((e) => e.severity == AnalysisSeverity.warning && !e.isIgnored)
-            .map((e) => e.message),
-      ];
+    ..._manualWarnings,
+    ...validationErrors
+        .where((e) => e.severity == AnalysisSeverity.warning && !e.isIgnored)
+        .map((e) => e.message),
+  ];
 }
 
 /// Validates agent skill directories against the Agent Skills specification.
 class Validator {
-  Validator({
-    Map<String, AnalysisSeverity>? ruleOverrides,
-    List<SkillRule>? customRules,
-  })  : _customSeverities = ruleOverrides ?? {},
-        _customRules = customRules ?? [] {
+  Validator({Map<String, AnalysisSeverity>? ruleOverrides, List<SkillRule>? customRules})
+    : _customSeverities = ruleOverrides ?? {},
+      _customRules = customRules ?? [] {
     _rules = _buildRules();
   }
   static const String _skillFileName = SkillContext.skillFileName;
@@ -102,18 +100,24 @@ class Validator {
     try {
       content = await skillMdFile.readAsString();
     } on FileSystemException catch (e) {
-      validationErrors.add(ValidationError(
+      validationErrors.add(
+        ValidationError(
           ruleId: skillFileInaccessible,
           file: skillMdFile.path,
           message: 'Failed to read $_skillFileName: $e',
-          severity: _getSeverity(skillFileInaccessible, AnalysisSeverity.error)));
+          severity: _getSeverity(skillFileInaccessible, AnalysisSeverity.error),
+        ),
+      );
       return ValidationResult(validationErrors: validationErrors);
     } catch (e) {
-      validationErrors.add(ValidationError(
+      validationErrors.add(
+        ValidationError(
           ruleId: unexpectedError,
           file: skillMdFile.path,
           message: 'Unexpected error reading $_skillFileName: $e',
-          severity: _getSeverity(unexpectedError, AnalysisSeverity.error)));
+          severity: _getSeverity(unexpectedError, AnalysisSeverity.error),
+        ),
+      );
       return ValidationResult(validationErrors: validationErrors);
     }
 
@@ -148,16 +152,14 @@ class Validator {
       for (final error in errors) {
         if (error.severity != rule.severity) {
           _log.warning(
-              'Rule "${rule.name}" used severity ${error.severity} instead of defined ${rule.severity}.');
+            'Rule "${rule.name}" used severity ${error.severity} instead of defined ${rule.severity}.',
+          );
         }
       }
       validationErrors.addAll(errors);
     }
 
-    return ValidationResult(
-      validationErrors: validationErrors,
-      context: context,
-    );
+    return ValidationResult(validationErrors: validationErrors, context: context);
   }
 
   List<SkillRule> _buildRules() {
@@ -188,34 +190,47 @@ class Validator {
   }
 
   Future<bool> _checkDirectoryStructure(
-      Directory dir, List<ValidationError> validationErrors) async {
-    final AnalysisSeverity pathDoesNotExistSeverity =
-        _getSeverity(pathDoesNotExist, AnalysisSeverity.error);
+    Directory dir,
+    List<ValidationError> validationErrors,
+  ) async {
+    final AnalysisSeverity pathDoesNotExistSeverity = _getSeverity(
+      pathDoesNotExist,
+      AnalysisSeverity.error,
+    );
 
     if (!dir.existsSync()) {
       if (File(dir.path).existsSync()) {
-        validationErrors.add(ValidationError(
+        validationErrors.add(
+          ValidationError(
             ruleId: pathDoesNotExist,
             file: dir.path,
             message: 'Path is not a directory: ${dir.path} (see $_dirStructureUrl)',
-            severity: pathDoesNotExistSeverity));
+            severity: pathDoesNotExistSeverity,
+          ),
+        );
       } else {
-        validationErrors.add(ValidationError(
+        validationErrors.add(
+          ValidationError(
             ruleId: pathDoesNotExist,
             file: dir.path,
             message: 'Directory does not exist: ${dir.path} (see $_dirStructureUrl)',
-            severity: pathDoesNotExistSeverity));
+            severity: pathDoesNotExistSeverity,
+          ),
+        );
       }
       return false;
     }
 
     final skillMdFile = File(p.join(dir.path, _skillFileName));
     if (!skillMdFile.existsSync()) {
-      validationErrors.add(ValidationError(
+      validationErrors.add(
+        ValidationError(
           ruleId: pathDoesNotExist,
           file: dir.path,
           message: '$_skillFileName is missing in directory: ${dir.path} (see $_dirStructureUrl)',
-          severity: pathDoesNotExistSeverity));
+          severity: pathDoesNotExistSeverity,
+        ),
+      );
       return false;
     }
     return true;

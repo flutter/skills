@@ -29,18 +29,21 @@ class AbsolutePathsRule extends SkillRule implements FixableRule {
     // Extract content after YAML frontmatter
     final skillStartRegex = RegExp(r'^---\s*\n(.*?)\n---\s*\n', dotAll: true);
     final RegExpMatch? match = skillStartRegex.firstMatch(context.rawContent);
-    final String markdownContent =
-        match != null ? context.rawContent.substring(match.end) : context.rawContent;
+    final String markdownContent = match != null
+        ? context.rawContent.substring(match.end)
+        : context.rawContent;
 
     for (final RegExpMatch linkMatch in _markdownLinkRegex.allMatches(markdownContent)) {
       final String path = linkMatch.group(1)!;
       if (isAbsolute(path) || windows.isAbsolute(path)) {
-        errors.add(ValidationError(
-          ruleId: name,
-          severity: severity,
-          file: _skillFileName,
-          message: 'Absolute filepath found in link: $path',
-        ));
+        errors.add(
+          ValidationError(
+            ruleId: name,
+            severity: severity,
+            file: _skillFileName,
+            message: 'Absolute filepath found in link: $path',
+          ),
+        );
       }
     }
 

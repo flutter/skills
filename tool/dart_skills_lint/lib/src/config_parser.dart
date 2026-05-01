@@ -79,8 +79,9 @@ Future<Configuration> loadConfig() async {
         // Validate top-level keys
         for (final key in toolConfig.keys) {
           if (!_allowedTopLevelKeys.contains(key.toString())) {
-            parsingErrors
-                .add('Unrecognized top-level key "$key" in dart_skills_lint configuration.');
+            parsingErrors.add(
+              'Unrecognized top-level key "$key" in dart_skills_lint configuration.',
+            );
           }
         }
 
@@ -119,8 +120,9 @@ Future<Configuration> loadConfig() async {
                   }
                 }
                 final ignoreFile = dir[_ignoreFileKey] as String?;
-                directoryConfigs
-                    .add(DirectoryConfig(path: path, rules: rules, ignoreFile: ignoreFile));
+                directoryConfigs.add(
+                  DirectoryConfig(path: path, rules: rules, ignoreFile: ignoreFile),
+                );
               }
             }
           }

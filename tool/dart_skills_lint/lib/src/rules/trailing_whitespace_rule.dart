@@ -53,12 +53,9 @@ class TrailingWhitespaceRule extends SkillRule implements FixableRule {
         }
 
         if (message != null) {
-          errors.add(ValidationError(
-            ruleId: name,
-            severity: severity,
-            file: 'SKILL.md',
-            message: message,
-          ));
+          errors.add(
+            ValidationError(ruleId: name, severity: severity, file: 'SKILL.md', message: message),
+          );
         }
       }
     }

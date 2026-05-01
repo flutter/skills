@@ -42,60 +42,72 @@ class NameFormatRule extends SkillRule implements FixableRule {
     }
 
     if (skillName != skillName.toLowerCase()) {
-      errors.add(ValidationError(
-        ruleId: name,
-        severity: severity,
-        file: _skillFileName,
-        message: 'Skill name must be lowercase: $skillName (see $_nameFieldUrl)',
-      ));
+      errors.add(
+        ValidationError(
+          ruleId: name,
+          severity: severity,
+          file: _skillFileName,
+          message: 'Skill name must be lowercase: $skillName (see $_nameFieldUrl)',
+        ),
+      );
     }
 
     if (skillName.length > maxNameLength) {
-      errors.add(ValidationError(
-        ruleId: name,
-        severity: severity,
-        file: _skillFileName,
-        message: 'Skill name too long. Maximum $maxNameLength characters (see $_nameFieldUrl)',
-      ));
+      errors.add(
+        ValidationError(
+          ruleId: name,
+          severity: severity,
+          file: _skillFileName,
+          message: 'Skill name too long. Maximum $maxNameLength characters (see $_nameFieldUrl)',
+        ),
+      );
     }
 
     if (!_validNameRegex.hasMatch(skillName)) {
-      errors.add(ValidationError(
-        ruleId: name,
-        severity: severity,
-        file: _skillFileName,
-        message:
-            'Skill name contains invalid characters. Only lowercase letters, digits, and hyphens allowed (see $_nameFieldUrl)',
-      ));
+      errors.add(
+        ValidationError(
+          ruleId: name,
+          severity: severity,
+          file: _skillFileName,
+          message:
+              'Skill name contains invalid characters. Only lowercase letters, digits, and hyphens allowed (see $_nameFieldUrl)',
+        ),
+      );
     }
 
     if (skillName.startsWith('-') || skillName.endsWith('-')) {
-      errors.add(ValidationError(
-        ruleId: name,
-        severity: severity,
-        file: _skillFileName,
-        message: 'Skill name cannot have leading or trailing hyphens (see $_nameFieldUrl)',
-      ));
+      errors.add(
+        ValidationError(
+          ruleId: name,
+          severity: severity,
+          file: _skillFileName,
+          message: 'Skill name cannot have leading or trailing hyphens (see $_nameFieldUrl)',
+        ),
+      );
     }
 
     if (skillName.contains('--')) {
-      errors.add(ValidationError(
-        ruleId: name,
-        severity: severity,
-        file: _skillFileName,
-        message: 'Skill name cannot have consecutive hyphens (see $_nameFieldUrl)',
-      ));
+      errors.add(
+        ValidationError(
+          ruleId: name,
+          severity: severity,
+          file: _skillFileName,
+          message: 'Skill name cannot have consecutive hyphens (see $_nameFieldUrl)',
+        ),
+      );
     }
 
     final String dirName = basename(context.directory.path);
     if (skillName != dirName) {
-      errors.add(ValidationError(
-        ruleId: name,
-        severity: severity,
-        file: _skillFileName,
-        message:
-            'Skill name ($skillName) must exactly match the parent directory name ($dirName) (see $_nameFieldUrl)',
-      ));
+      errors.add(
+        ValidationError(
+          ruleId: name,
+          severity: severity,
+          file: _skillFileName,
+          message:
+              'Skill name ($skillName) must exactly match the parent directory name ($dirName) (see $_nameFieldUrl)',
+        ),
+      );
     }
 
     return errors;

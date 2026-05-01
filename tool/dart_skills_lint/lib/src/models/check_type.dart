@@ -6,11 +6,7 @@ import 'analysis_severity.dart';
 
 /// Encapsulates metadata and severity state for a specific validation rule.
 class CheckType {
-  const CheckType({
-    required this.name,
-    required this.defaultSeverity,
-    required this.help,
-  });
+  const CheckType({required this.name, required this.defaultSeverity, required this.help});
   final String name;
 
   /// The default severity if not overridden by config or flags.
