@@ -30,17 +30,22 @@ void main() {
       final skillDir = Directory('${tempDir.path}/test-skill');
       await skillDir.create();
       await File('${skillDir.path}/SKILL.md').writeAsString(
-          '${buildFrontmatter(name: 'test-skill')}Body with [broken link](missing.md) and [absolute link](/absolute/path.md)');
+        '${buildFrontmatter(name: 'test-skill')}Body with [broken link](missing.md) and [absolute link](/absolute/path.md)',
+      );
 
-      final validator = Validator(ruleOverrides: {
-        RelativePathsRule.ruleName: AnalysisSeverity.warning,
-        AbsolutePathsRule.ruleName: AnalysisSeverity.error,
-      });
+      final validator = Validator(
+        ruleOverrides: {
+          RelativePathsRule.ruleName: AnalysisSeverity.warning,
+          AbsolutePathsRule.ruleName: AnalysisSeverity.error,
+        },
+      );
       final ValidationResult result = await validator.validate(skillDir);
 
       expect(result.isValid, isFalse);
       expect(
-          result.errors, contains(contains('Absolute filepath found in link: /absolute/path.md')));
+        result.errors,
+        contains(contains('Absolute filepath found in link: /absolute/path.md')),
+      );
       expect(result.warnings, contains(contains('Linked file does not exist: missing.md')));
     });
 
@@ -48,11 +53,13 @@ void main() {
       final skillDir = Directory('${tempDir.path}/test-skill');
       await skillDir.create();
       await File('${skillDir.path}/SKILL.md').writeAsString(
-          '${buildFrontmatter(name: 'test-skill')}Body with [valid relative link](valid.md)');
+        '${buildFrontmatter(name: 'test-skill')}Body with [valid relative link](valid.md)',
+      );
       await File('${skillDir.path}/valid.md').writeAsString('Valid file content');
 
-      final validator =
-          Validator(ruleOverrides: {RelativePathsRule.ruleName: AnalysisSeverity.warning});
+      final validator = Validator(
+        ruleOverrides: {RelativePathsRule.ruleName: AnalysisSeverity.warning},
+      );
       final ValidationResult result = await validator.validate(skillDir);
 
       expect(result.isValid, isTrue);

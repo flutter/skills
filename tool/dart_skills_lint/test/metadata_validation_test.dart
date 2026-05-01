@@ -81,8 +81,9 @@ Body''');
       expect(result.isValid, isTrue);
       expect(result.warnings, isEmpty);
 
-      final Iterable<ValidationError> disallowedErrors =
-          result.validationErrors.where((e) => e.ruleId == DisallowedFieldRule.ruleName);
+      final Iterable<ValidationError> disallowedErrors = result.validationErrors.where(
+        (e) => e.ruleId == DisallowedFieldRule.ruleName,
+      );
       expect(disallowedErrors, isEmpty);
     });
 
@@ -102,8 +103,9 @@ Body''');
       // We need to make sure directory name matches name in metadata
       final skillDir = Directory('${tempDir.path}/metadata-test');
       await skillDir.create();
-      await File('${skillDir.path}/SKILL.md')
-          .writeAsString('${buildFrontmatter(name: 'metadata-test')}Body');
+      await File(
+        '${skillDir.path}/SKILL.md',
+      ).writeAsString('${buildFrontmatter(name: 'metadata-test')}Body');
 
       final ValidationResult result = await validator.validate(skillDir);
 

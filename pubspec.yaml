@@ -1,0 +1,9 @@
+name: skills_workspace
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.8
+
+workspace:
+  - tool/generator
+  - tool/dart_skills_lint

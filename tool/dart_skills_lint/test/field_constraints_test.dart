@@ -41,19 +41,23 @@ void main() {
       test('fails if too long (> ${NameFormatRule.maxNameLength} chars)', () async {
         final String longName = 'a' * (NameFormatRule.maxNameLength + 1);
         final Directory skillDir = await Directory('${tempDir.path}/$longName').create();
-        await File('${skillDir.path}/SKILL.md')
-            .writeAsString('${buildFrontmatter(name: longName)}Body');
+        await File(
+          '${skillDir.path}/SKILL.md',
+        ).writeAsString('${buildFrontmatter(name: longName)}Body');
         final validator = Validator();
         final ValidationResult result = await validator.validate(skillDir);
         expect(result.isValid, isFalse);
-        expect(result.errors,
-            contains(contains('Maximum ${NameFormatRule.maxNameLength} characters')));
+        expect(
+          result.errors,
+          contains(contains('Maximum ${NameFormatRule.maxNameLength} characters')),
+        );
       });
 
       test('fails if contains invalid characters', () async {
         final Directory skillDir = await Directory('${tempDir.path}/skill_name').create();
-        await File('${skillDir.path}/SKILL.md')
-            .writeAsString('${buildFrontmatter(name: 'skill_name')}Body');
+        await File(
+          '${skillDir.path}/SKILL.md',
+        ).writeAsString('${buildFrontmatter(name: 'skill_name')}Body');
         final validator = Validator();
         final ValidationResult result = await validator.validate(skillDir);
         expect(result.isValid, isFalse);
@@ -62,8 +66,9 @@ void main() {
 
       test('fails if has leading hyphen', () async {
         final Directory skillDir = await Directory('${tempDir.path}/-skill-name').create();
-        await File('${skillDir.path}/SKILL.md')
-            .writeAsString('${buildFrontmatter(name: '-skill-name')}Body');
+        await File(
+          '${skillDir.path}/SKILL.md',
+        ).writeAsString('${buildFrontmatter(name: '-skill-name')}Body');
         final validator = Validator();
         final ValidationResult result = await validator.validate(skillDir);
         expect(result.isValid, isFalse);
@@ -72,8 +77,9 @@ void main() {
 
       test('fails if has trailing hyphen', () async {
         final Directory skillDir = await Directory('${tempDir.path}/skill-name-').create();
-        await File('${skillDir.path}/SKILL.md')
-            .writeAsString('${buildFrontmatter(name: 'skill-name-')}Body');
+        await File(
+          '${skillDir.path}/SKILL.md',
+        ).writeAsString('${buildFrontmatter(name: 'skill-name-')}Body');
         final validator = Validator();
         final ValidationResult result = await validator.validate(skillDir);
         expect(result.isValid, isFalse);
@@ -82,8 +88,9 @@ void main() {
 
       test('fails if has consecutive hyphens', () async {
         final Directory skillDir = await Directory('${tempDir.path}/skill--name').create();
-        await File('${skillDir.path}/SKILL.md')
-            .writeAsString('${buildFrontmatter(name: 'skill--name')}Body');
+        await File(
+          '${skillDir.path}/SKILL.md',
+        ).writeAsString('${buildFrontmatter(name: 'skill--name')}Body');
         final validator = Validator();
         final ValidationResult result = await validator.validate(skillDir);
         expect(result.isValid, isFalse);
@@ -92,8 +99,9 @@ void main() {
 
       test('fails if name does not match directory name', () async {
         final Directory skillDir = await Directory('${tempDir.path}/wrong-name').create();
-        await File('${skillDir.path}/SKILL.md')
-            .writeAsString('${buildFrontmatter(name: 'right-name')}Body');
+        await File(
+          '${skillDir.path}/SKILL.md',
+        ).writeAsString('${buildFrontmatter(name: 'right-name')}Body');
         final validator = Validator();
         final ValidationResult result = await validator.validate(skillDir);
         expect(result.isValid, isFalse);
@@ -112,11 +120,16 @@ Body''');
 
         final rule = NameFormatRule();
         final String content = await file.readAsString();
-        final RegExpMatch? match =
-            RegExp(r'^---\s*\n(.*?)\n---\s*\n', dotAll: true).firstMatch(content);
+        final RegExpMatch? match = RegExp(
+          r'^---\s*\n(.*?)\n---\s*\n',
+          dotAll: true,
+        ).firstMatch(content);
         final parsedYaml = loadYaml(match!.group(1)!) as YamlMap?;
-        final context =
-            SkillContext(directory: skillDir, rawContent: content, parsedYaml: parsedYaml);
+        final context = SkillContext(
+          directory: skillDir,
+          rawContent: content,
+          parsedYaml: parsedYaml,
+        );
 
         final String fixedContent = await rule.fix('SKILL.md', content, context.directory);
 
@@ -128,13 +141,16 @@ Body''');
       test('fails if too long (> ${DescriptionLengthRule.maxDescriptionLength} chars)', () async {
         final String longDesc = 'a' * (DescriptionLengthRule.maxDescriptionLength + 1);
         final Directory skillDir = await Directory('${tempDir.path}/skill-name').create();
-        await File('${skillDir.path}/SKILL.md')
-            .writeAsString('${buildFrontmatter(name: 'skill-name', description: longDesc)}Body');
+        await File(
+          '${skillDir.path}/SKILL.md',
+        ).writeAsString('${buildFrontmatter(name: 'skill-name', description: longDesc)}Body');
         final validator = Validator();
         final ValidationResult result = await validator.validate(skillDir);
         expect(result.isValid, isFalse);
-        expect(result.errors,
-            contains(contains('Maximum ${DescriptionLengthRule.maxDescriptionLength} characters')));
+        expect(
+          result.errors,
+          contains(contains('Maximum ${DescriptionLengthRule.maxDescriptionLength} characters')),
+        );
       });
     });
 
@@ -153,9 +169,9 @@ Body''');
         final ValidationResult result = await validator.validate(skillDir);
         expect(result.isValid, isFalse);
         expect(
-            result.errors,
-            contains(
-                contains('Maximum ${ValidYamlMetadataRule.maxCompatibilityLength} characters')));
+          result.errors,
+          contains(contains('Maximum ${ValidYamlMetadataRule.maxCompatibilityLength} characters')),
+        );
       });
     });
   });

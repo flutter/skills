@@ -28,7 +28,7 @@ class RuleA extends SkillRule implements FixableRule {
         message: 'Error A',
         severity: AnalysisSeverity.warning,
         file: 'SKILL.md',
-      )
+      ),
     ];
   }
 
@@ -53,7 +53,7 @@ class RuleB extends SkillRule implements FixableRule {
         message: 'Error B',
         severity: AnalysisSeverity.warning,
         file: 'SKILL.md',
-      )
+      ),
     ];
   }
 
@@ -78,7 +78,7 @@ class RuleThrows extends SkillRule implements FixableRule {
         message: 'Error Throws',
         severity: AnalysisSeverity.warning,
         file: 'SKILL.md',
-      )
+      ),
     ];
   }
 
@@ -119,34 +119,36 @@ void main() {
       expect(content, 'Original A B');
     });
 
-    test('--fast-fail stops processing subsequent skills but completes current skill fixes',
-        () async {
-      final skillDir1 = Directory(p.join(tempDir.path, 'test-skill-1'));
-      await skillDir1.create();
-      final skillFile1 = File(p.join(skillDir1.path, 'SKILL.md'));
-      await skillFile1.writeAsString('Original1');
+    test(
+      '--fast-fail stops processing subsequent skills but completes current skill fixes',
+      () async {
+        final skillDir1 = Directory(p.join(tempDir.path, 'test-skill-1'));
+        await skillDir1.create();
+        final skillFile1 = File(p.join(skillDir1.path, 'SKILL.md'));
+        await skillFile1.writeAsString('Original1');
 
-      final skillDir2 = Directory(p.join(tempDir.path, 'test-skill-2'));
-      await skillDir2.create();
-      final skillFile2 = File(p.join(skillDir2.path, 'SKILL.md'));
-      await skillFile2.writeAsString('Original2');
+        final skillDir2 = Directory(p.join(tempDir.path, 'test-skill-2'));
+        await skillDir2.create();
+        final skillFile2 = File(p.join(skillDir2.path, 'SKILL.md'));
+        await skillFile2.writeAsString('Original2');
 
-      final bool success = await validateSkillsInternal(
-        individualSkillPaths: [skillDir1.path, skillDir2.path],
-        fixApply: true,
-        fastFail: true,
-        quiet: true,
-        customRules: [RuleA()],
-      );
+        final bool success = await validateSkillsInternal(
+          individualSkillPaths: [skillDir1.path, skillDir2.path],
+          fixApply: true,
+          fastFail: true,
+          quiet: true,
+          customRules: [RuleA()],
+        );
 
-      expect(success, isFalse);
+        expect(success, isFalse);
 
-      final String content1 = await skillFile1.readAsString();
-      expect(content1, 'Original1 A');
+        final String content1 = await skillFile1.readAsString();
+        expect(content1, 'Original1 A');
 
-      final String content2 = await skillFile2.readAsString();
-      expect(content2, 'Original2');
-    });
+        final String content2 = await skillFile2.readAsString();
+        expect(content2, 'Original2');
+      },
+    );
 
     test('handles exceptions in fix method gracefully', () async {
       final skillDir = Directory(p.join(tempDir.path, 'test-skill'));

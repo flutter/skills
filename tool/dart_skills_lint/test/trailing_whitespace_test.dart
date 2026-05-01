@@ -87,18 +87,20 @@ void main() {
       expect(errors.first.severity, AnalysisSeverity.error);
     });
 
-    test(r'flags line with 1 trailing space before Windows line ending (\r\n) as warning',
-        () async {
-      final rule = TrailingWhitespaceRule(severity: AnalysisSeverity.warning);
-      final context = SkillContext(
-        directory: Directory('dummy'),
-        rawContent: '${buildFrontmatter(name: 'test-skill')}Line with 1 space \r\n',
-      );
+    test(
+      r'flags line with 1 trailing space before Windows line ending (\r\n) as warning',
+      () async {
+        final rule = TrailingWhitespaceRule(severity: AnalysisSeverity.warning);
+        final context = SkillContext(
+          directory: Directory('dummy'),
+          rawContent: '${buildFrontmatter(name: 'test-skill')}Line with 1 space \r\n',
+        );
 
-      final List<ValidationError> errors = await rule.validate(context);
+        final List<ValidationError> errors = await rule.validate(context);
 
-      expect(errors.any((e) => e.message.contains('has 1 trailing space(s)')), isTrue);
-    });
+        expect(errors.any((e) => e.message.contains('has 1 trailing space(s)')), isTrue);
+      },
+    );
 
     test('flags line containing only whitespace (3 spaces) as warning', () async {
       final rule = TrailingWhitespaceRule(severity: AnalysisSeverity.warning);

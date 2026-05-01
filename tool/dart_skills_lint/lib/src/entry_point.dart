@@ -83,25 +83,46 @@ Future<void> runApp(List<String> args) async {
   }
 
   parser
-    ..addFlag(_fastFailFlag,
-        negatable: false, help: 'Fail immediately on the first skill validation error.')
-    ..addFlag(_quietFlag,
-        abbr: 'q', negatable: false, help: 'Quiet mode (only print errors and warnings).')
-    ..addMultiOption(_skillsDirectoryFlag,
-        abbr: 'd', help: 'Path to a skills directory to validate. Can be specified multiple times.')
-    ..addMultiOption(_skillOption,
-        abbr: 's',
-        help: 'Path to an individual skill directory to validate. Can be specified multiple times.')
+    ..addFlag(
+      _fastFailFlag,
+      negatable: false,
+      help: 'Fail immediately on the first skill validation error.',
+    )
+    ..addFlag(
+      _quietFlag,
+      abbr: 'q',
+      negatable: false,
+      help: 'Quiet mode (only print errors and warnings).',
+    )
+    ..addMultiOption(
+      _skillsDirectoryFlag,
+      abbr: 'd',
+      help: 'Path to a skills directory to validate. Can be specified multiple times.',
+    )
+    ..addMultiOption(
+      _skillOption,
+      abbr: 's',
+      help: 'Path to an individual skill directory to validate. Can be specified multiple times.',
+    )
     ..addOption(_ignoreFileOption, help: 'Path to a JSON file listing lints to ignore for the run.')
-    ..addFlag(_generateBaselineFlag,
-        negatable: false,
-        help: 'Write all current errors into $defaultIgnoreFileName to ignore on future runs.')
-    ..addFlag(_ignoreConfigFlag,
-        negatable: false, help: 'Ignore the YAML configuration file entirely.')
+    ..addFlag(
+      _generateBaselineFlag,
+      negatable: false,
+      help: 'Write all current errors into $defaultIgnoreFileName to ignore on future runs.',
+    )
+    ..addFlag(
+      _ignoreConfigFlag,
+      negatable: false,
+      help: 'Ignore the YAML configuration file entirely.',
+    )
     ..addFlag(_fixFlag, negatable: false, help: 'Preview fixes for failing lints (dry run).')
     ..addFlag(_fixApplyFlag, negatable: false, help: 'Apply fixes for failing lints.')
-    ..addFlag(_allowMisconfiguredKeysFlag,
-        negatable: false, hide: true, help: 'Allow misconfigured keys in dart_skills_lint.yaml.');
+    ..addFlag(
+      _allowMisconfiguredKeysFlag,
+      negatable: false,
+      hide: true,
+      help: 'Allow misconfigured keys in dart_skills_lint.yaml.',
+    );
 
   final ArgResults results;
   try {
@@ -270,8 +291,11 @@ Future<bool> validateSkillsInternal({
       continue;
     }
 
-    final Map<String, AnalysisSeverity> localRules =
-        _resolveRulesForPath(normalizedSkillPath, config, resolvedRules);
+    final Map<String, AnalysisSeverity> localRules = _resolveRulesForPath(
+      normalizedSkillPath,
+      config,
+      resolvedRules,
+    );
     String? localIgnoreFile = _resolveIgnoreFileForPath(normalizedSkillPath, config);
 
     if (ignoreFileOverride != null) {
@@ -280,8 +304,10 @@ Future<bool> validateSkillsInternal({
 
     final validator = Validator(ruleOverrides: localRules, customRules: customRules);
 
-    final Map<String, List<IgnoreEntry>> ignoresMap =
-        await _loadIgnores(localIgnoreFile, skillDir.parent);
+    final Map<String, List<IgnoreEntry>> ignoresMap = await _loadIgnores(
+      localIgnoreFile,
+      skillDir.parent,
+    );
     final String skillName = p.basename(skillDir.path);
     final List<IgnoreEntry> skillIgnores = ignoresMap[skillName] ?? [];
 
@@ -313,7 +339,8 @@ Future<bool> validateSkillsInternal({
       for (final ignore in skillIgnores) {
         if (!ignore.used) {
           _log.info(
-              "Stale ignore entry found for rule '${ignore.ruleId}' in skill '$skillName' at '$fullPath'. Consider removing it.");
+            "Stale ignore entry found for rule '${ignore.ruleId}' in skill '$skillName' at '$fullPath'. Consider removing it.",
+          );
         }
       }
     }
@@ -340,8 +367,11 @@ Future<bool> validateSkillsInternal({
       continue;
     }
 
-    final Map<String, AnalysisSeverity> localRules =
-        _resolveRulesForPath(normalizedRootPath, config, resolvedRules);
+    final Map<String, AnalysisSeverity> localRules = _resolveRulesForPath(
+      normalizedRootPath,
+      config,
+      resolvedRules,
+    );
     String? localIgnoreFile = _resolveIgnoreFileForPath(normalizedRootPath, config);
 
     if (ignoreFileOverride != null) {
@@ -407,7 +437,8 @@ Future<bool> validateSkillsInternal({
           if (!ignore.used) {
             final String fullPath = p.absolute(p.join(rootDir.path, skillName));
             _log.info(
-                "Stale ignore entry found for rule '${ignore.ruleId}' in skill '$skillName' at '$fullPath'. Consider removing it.");
+              "Stale ignore entry found for rule '${ignore.ruleId}' in skill '$skillName' at '$fullPath'. Consider removing it.",
+            );
           }
         }
       }
@@ -425,7 +456,8 @@ Future<bool> validateSkillsInternal({
       final skillMdFile = File(p.join(expandedRootPath, SkillContext.skillFileName));
       if (skillMdFile.existsSync()) {
         _log.severe(
-            'Directory "$expandedRootPath" appears to be an individual skill. Use --skill / -s instead of -d / --skills-directory.');
+          'Directory "$expandedRootPath" appears to be an individual skill. Use --skill / -s instead of -d / --skills-directory.',
+        );
         foundSingleSkillPassedToD = true;
       }
     }
@@ -482,7 +514,10 @@ Map<String, AnalysisSeverity> resolveRules(ArgResults results, Configuration con
 }
 
 Map<String, AnalysisSeverity> _resolveRulesForPath(
-    String normalizedPath, Configuration config, Map<String, AnalysisSeverity> baseRules) {
+  String normalizedPath,
+  Configuration config,
+  Map<String, AnalysisSeverity> baseRules,
+) {
   final localRules = Map<String, AnalysisSeverity>.from(baseRules);
   for (final DirectoryConfig dirConfig in config.directoryConfigs) {
     final String normalizedConfigPath = p.normalize(dirConfig.path);
@@ -505,7 +540,9 @@ String? _resolveIgnoreFileForPath(String normalizedPath, Configuration config) {
 }
 
 Future<Map<String, List<IgnoreEntry>>> _loadIgnores(
-    String? ignoreFileOverride, Directory rootDir) async {
+  String? ignoreFileOverride,
+  Directory rootDir,
+) async {
   final String ignorePath = ignoreFileOverride != null
       ? p.normalize(_expandPath(ignoreFileOverride))
       : p.join(rootDir.path, defaultIgnoreFileName);
@@ -596,12 +633,16 @@ Future<ValidationResult> _applyFixesIfNeeded({
 
   for (final SkillRule rule in validator.rules) {
     if (rule is FixableRule) {
-      final bool hasErrors =
-          result.validationErrors.any((e) => e.ruleId == rule.name && !e.isIgnored);
+      final bool hasErrors = result.validationErrors.any(
+        (e) => e.ruleId == rule.name && !e.isIgnored,
+      );
       if (hasErrors) {
         try {
-          final String newContent = await (rule as FixableRule)
-              .fix(SkillContext.skillFileName, currentContent, context.directory);
+          final String newContent = await (rule as FixableRule).fix(
+            SkillContext.skillFileName,
+            currentContent,
+            context.directory,
+          );
           if (newContent != currentContent) {
             currentContent = newContent;
             modified = true;
@@ -658,8 +699,12 @@ void _printDiff(String original, String modified) {
   }
 }
 
-Future<void> _generateBaselineFile(ValidationResult result, String? ignoreFileOverride,
-    Directory rootDir, Directory skillDir) async {
+Future<void> _generateBaselineFile(
+  ValidationResult result,
+  String? ignoreFileOverride,
+  Directory rootDir,
+  Directory skillDir,
+) async {
   final String ignorePath = ignoreFileOverride != null
       ? p.normalize(_expandPath(ignoreFileOverride))
       : p.join(rootDir.path, defaultIgnoreFileName);
@@ -681,10 +726,7 @@ Future<void> _generateBaselineFile(ValidationResult result, String? ignoreFileOv
       }
       currentSkillSeen.add(key);
 
-      currentSkillIgnores.add(IgnoreEntry(
-        ruleId: error.ruleId,
-        fileName: error.file,
-      ));
+      currentSkillIgnores.add(IgnoreEntry(ruleId: error.ruleId, fileName: error.file));
     }
   }
 

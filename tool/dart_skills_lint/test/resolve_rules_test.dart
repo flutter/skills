@@ -21,10 +21,7 @@ void main() {
     ArgParser createParser() {
       final parser = ArgParser();
       for (final CheckType check in RuleRegistry.allChecks) {
-        parser.addFlag(
-          check.name,
-          defaultsTo: check.defaultSeverity != AnalysisSeverity.disabled,
-        );
+        parser.addFlag(check.name, defaultsTo: check.defaultSeverity != AnalysisSeverity.disabled);
       }
       return parser;
     }
@@ -45,10 +42,12 @@ void main() {
 
     test('config overrides defaults', () {
       final ArgResults results = createParser().parse([]);
-      final config = Configuration(configuredRules: {
-        RelativePathsRule.ruleName: AnalysisSeverity.error,
-        AbsolutePathsRule.ruleName: AnalysisSeverity.warning,
-      });
+      final config = Configuration(
+        configuredRules: {
+          RelativePathsRule.ruleName: AnalysisSeverity.error,
+          AbsolutePathsRule.ruleName: AnalysisSeverity.warning,
+        },
+      );
 
       final Map<String, AnalysisSeverity> resolved = resolveRules(results, config);
 
@@ -60,9 +59,9 @@ void main() {
 
     test('CLI flags override config and defaults', () {
       final ArgResults results = createParser().parse(['--${RelativePathsRule.ruleName}']);
-      final config = Configuration(configuredRules: {
-        RelativePathsRule.ruleName: AnalysisSeverity.error,
-      });
+      final config = Configuration(
+        configuredRules: {RelativePathsRule.ruleName: AnalysisSeverity.error},
+      );
 
       final Map<String, AnalysisSeverity> resolved = resolveRules(results, config);
 
@@ -71,9 +70,9 @@ void main() {
 
     test('CLI flag disabled overrides config', () {
       final ArgResults results = createParser().parse(['--no-${ValidYamlMetadataRule.ruleName}']);
-      final config = Configuration(configuredRules: {
-        ValidYamlMetadataRule.ruleName: AnalysisSeverity.warning,
-      });
+      final config = Configuration(
+        configuredRules: {ValidYamlMetadataRule.ruleName: AnalysisSeverity.warning},
+      );
 
       final Map<String, AnalysisSeverity> resolved = resolveRules(results, config);
 

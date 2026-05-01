@@ -28,8 +28,9 @@ class RelativePathsRule extends SkillRule {
     // Extract content after YAML frontmatter
     final skillStartRegex = RegExp(r'^---\s*\n(.*?)\n---\s*\n', dotAll: true);
     final RegExpMatch? match = skillStartRegex.firstMatch(context.rawContent);
-    final String markdownContent =
-        match != null ? context.rawContent.substring(match.end) : context.rawContent;
+    final String markdownContent = match != null
+        ? context.rawContent.substring(match.end)
+        : context.rawContent;
 
     for (final RegExpMatch linkMatch in _markdownLinkRegex.allMatches(markdownContent)) {
       final String fullPath = linkMatch.group(1)!;
@@ -55,12 +56,14 @@ class RelativePathsRule extends SkillRule {
 
       final linkedFile = File(join(context.directory.path, effectivePath));
       if (!linkedFile.existsSync()) {
-        errors.add(ValidationError(
-          ruleId: name,
-          severity: severity,
-          file: _skillFileName,
-          message: 'Linked file does not exist: $path',
-        ));
+        errors.add(
+          ValidationError(
+            ruleId: name,
+            severity: severity,
+            file: _skillFileName,
+            message: 'Linked file does not exist: $path',
+          ),
+        );
       }
     }
 

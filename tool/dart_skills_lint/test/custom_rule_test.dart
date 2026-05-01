@@ -15,12 +15,14 @@ class CustomRule extends SkillRule {
   Future<List<ValidationError>> validate(SkillContext context) async {
     final errors = <ValidationError>[];
     if (context.rawContent.contains('TRIGGER_ERROR')) {
-      errors.add(ValidationError(
-        ruleId: name,
-        severity: severity,
-        file: 'SKILL.md',
-        message: 'Custom rule triggered',
-      ));
+      errors.add(
+        ValidationError(
+          ruleId: name,
+          severity: severity,
+          file: 'SKILL.md',
+          message: 'Custom rule triggered',
+        ),
+      );
     }
     return errors;
   }
@@ -41,7 +43,7 @@ class MismatchRule extends SkillRule {
         severity: AnalysisSeverity.error, // Mismatch!
         file: 'SKILL.md',
         message: 'Triggered',
-      )
+      ),
     ];
   }
 }
@@ -88,10 +90,11 @@ Body''');
       final validator = Validator(customRules: [MismatchRule()]);
 
       final logs = <String>[];
-      final StreamSubscription<LogRecord> subscription =
-          Logger('dart_skills_lint').onRecord.listen((record) {
-        logs.add(record.message);
-      });
+      final StreamSubscription<LogRecord> subscription = Logger('dart_skills_lint').onRecord.listen(
+        (record) {
+          logs.add(record.message);
+        },
+      );
 
       try {
         await validator.validate(skillDir);
@@ -100,19 +103,20 @@ Body''');
       }
 
       expect(
-          logs,
-          contains(contains(
-              'Rule "mismatch-rule" used severity AnalysisSeverity.error instead of defined AnalysisSeverity.warning')));
+        logs,
+        contains(
+          contains(
+            'Rule "mismatch-rule" used severity AnalysisSeverity.error instead of defined AnalysisSeverity.warning',
+          ),
+        ),
+      );
     });
 
     test('Validator throws ArgumentError on duplicate rule names', () {
       final rule1 = CustomRule();
       final rule2 = CustomRule(); // Same name 'custom-rule'
 
-      expect(
-        () => Validator(customRules: [rule1, rule2]),
-        throwsArgumentError,
-      );
+      expect(() => Validator(customRules: [rule1, rule2]), throwsArgumentError);
     });
   });
 }

@@ -38,11 +38,11 @@ dart_skills_lint:
     check-relative-paths: disabled
 ''');
 
-      final TestProcess process = await TestProcess.start(
-        'dart',
-        [p.normalize(p.absolute('bin/cli.dart')), '-s', 'test-skill'],
-        workingDirectory: tempDir.path,
-      );
+      final TestProcess process = await TestProcess.start('dart', [
+        p.normalize(p.absolute('bin/cli.dart')),
+        '-s',
+        'test-skill',
+      ], workingDirectory: tempDir.path);
 
       final List<String> stdout = await process.stdout.rest.toList();
       expect(stdout.join('\n'), contains('Skill is valid.'));
@@ -64,11 +64,11 @@ dart_skills_lint:
     check-absolute-paths: warning
 ''');
 
-      final TestProcess process = await TestProcess.start(
-        'dart',
-        [p.normalize(p.absolute('bin/cli.dart')), '-s', 'test-skill'],
-        workingDirectory: tempDir.path,
-      );
+      final TestProcess process = await TestProcess.start('dart', [
+        p.normalize(p.absolute('bin/cli.dart')),
+        '-s',
+        'test-skill',
+      ], workingDirectory: tempDir.path);
 
       final List<String> stdout = await process.stdout.rest.toList();
       expect(stdout.join('\n'), contains('Warnings:'));
@@ -90,11 +90,12 @@ dart_skills_lint:
     check-relative-paths: disabled
 ''');
 
-      final TestProcess process = await TestProcess.start(
-        'dart',
-        [p.normalize(p.absolute('bin/cli.dart')), '-s', 'test-skill', '--check-relative-paths'],
-        workingDirectory: tempDir.path,
-      );
+      final TestProcess process = await TestProcess.start('dart', [
+        p.normalize(p.absolute('bin/cli.dart')),
+        '-s',
+        'test-skill',
+        '--check-relative-paths',
+      ], workingDirectory: tempDir.path);
 
       final List<String> stderr = await process.stderr.rest.toList();
       expect(stderr.join('\n'), contains('Skill is invalid:'));
@@ -118,11 +119,11 @@ dart_skills_lint:
       ignore_file: "$ignorePath"
 ''');
 
-      final TestProcess process = await TestProcess.start(
-        'dart',
-        [p.normalize(p.absolute('bin/cli.dart')), '-s', 'test-skill'],
-        workingDirectory: tempDir.path,
-      );
+      final TestProcess process = await TestProcess.start('dart', [
+        p.normalize(p.absolute('bin/cli.dart')),
+        '-s',
+        'test-skill',
+      ], workingDirectory: tempDir.path);
 
       final List<String> stdout = await process.stdout.rest.toList();
       expect(stdout.join('\n'), contains('File not found generating-baseline'));
@@ -151,19 +152,20 @@ dart_skills_lint:
 ''');
 
       // 1. Run without --ignore-config. Should pass because config disables the check.
-      final TestProcess passProcess = await TestProcess.start(
-        'dart',
-        [p.normalize(p.absolute('bin/cli.dart')), '-s', 'TEST-SKILL'],
-        workingDirectory: tempDir.path,
-      );
+      final TestProcess passProcess = await TestProcess.start('dart', [
+        p.normalize(p.absolute('bin/cli.dart')),
+        '-s',
+        'TEST-SKILL',
+      ], workingDirectory: tempDir.path);
       await passProcess.shouldExit(0);
 
       // 2. Run with --ignore-config. Should fail because config is ignored and default is used.
-      final TestProcess failProcess = await TestProcess.start(
-        'dart',
-        [p.normalize(p.absolute('bin/cli.dart')), '-s', 'TEST-SKILL', '--ignore-config'],
-        workingDirectory: tempDir.path,
-      );
+      final TestProcess failProcess = await TestProcess.start('dart', [
+        p.normalize(p.absolute('bin/cli.dart')),
+        '-s',
+        'TEST-SKILL',
+        '--ignore-config',
+      ], workingDirectory: tempDir.path);
       await failProcess.shouldExit(1);
     });
 
@@ -184,17 +186,13 @@ dart_skills_lint:
 ''');
 
       // 1. Generate baseline with --ignore-config. It should ignore config (so the rule is enabled) and find violations to generate baseline for!
-      final TestProcess genProcess = await TestProcess.start(
-        'dart',
-        [
-          p.normalize(p.absolute('bin/cli.dart')),
-          '-s',
-          'TEST-SKILL',
-          '--generate-baseline',
-          '--ignore-config'
-        ],
-        workingDirectory: tempDir.path,
-      );
+      final TestProcess genProcess = await TestProcess.start('dart', [
+        p.normalize(p.absolute('bin/cli.dart')),
+        '-s',
+        'TEST-SKILL',
+        '--generate-baseline',
+        '--ignore-config',
+      ], workingDirectory: tempDir.path);
       await genProcess.shouldExit(0); // Exits 0 if --generate-baseline passed
 
       final ignoreFile = File('${skillDir.path}/$defaultIgnoreFileName');
@@ -218,15 +216,17 @@ dart_skills_lint:
   invalid-key: value
 ''');
 
-      final TestProcess process = await TestProcess.start(
-        'dart',
-        [p.normalize(p.absolute('bin/cli.dart')), '-s', 'test-skill'],
-        workingDirectory: tempDir.path,
-      );
+      final TestProcess process = await TestProcess.start('dart', [
+        p.normalize(p.absolute('bin/cli.dart')),
+        '-s',
+        'test-skill',
+      ], workingDirectory: tempDir.path);
 
       final List<String> stderr = await process.stderr.rest.toList();
-      expect(stderr.join('\n'),
-          contains('Configuration error: Unrecognized top-level key "invalid-key"'));
+      expect(
+        stderr.join('\n'),
+        contains('Configuration error: Unrecognized top-level key "invalid-key"'),
+      );
       await process.shouldExit(1);
     });
 
@@ -246,15 +246,17 @@ dart_skills_lint:
       invalid-dir-key: value
 ''');
 
-      final TestProcess process = await TestProcess.start(
-        'dart',
-        [p.normalize(p.absolute('bin/cli.dart')), '-s', 'test-skill'],
-        workingDirectory: tempDir.path,
-      );
+      final TestProcess process = await TestProcess.start('dart', [
+        p.normalize(p.absolute('bin/cli.dart')),
+        '-s',
+        'test-skill',
+      ], workingDirectory: tempDir.path);
 
       final List<String> stderr = await process.stderr.rest.toList();
       expect(
-          stderr.join('\n'), contains('Configuration error: Unrecognized key "invalid-dir-key"'));
+        stderr.join('\n'),
+        contains('Configuration error: Unrecognized key "invalid-dir-key"'),
+      );
       await process.shouldExit(1);
     });
 
@@ -272,15 +274,18 @@ dart_skills_lint:
   invalid-key: value
 ''');
 
-      final TestProcess process = await TestProcess.start(
-        'dart',
-        [p.normalize(p.absolute('bin/cli.dart')), '-s', 'test-skill', '--allow-misconfigured-keys'],
-        workingDirectory: tempDir.path,
-      );
+      final TestProcess process = await TestProcess.start('dart', [
+        p.normalize(p.absolute('bin/cli.dart')),
+        '-s',
+        'test-skill',
+        '--allow-misconfigured-keys',
+      ], workingDirectory: tempDir.path);
 
       final List<String> stdout = await process.stdout.rest.toList();
-      expect(stdout.join('\n'),
-          contains('Configuration warning: Unrecognized top-level key "invalid-key"'));
+      expect(
+        stdout.join('\n'),
+        contains('Configuration warning: Unrecognized top-level key "invalid-key"'),
+      );
       await process.shouldExit(0);
     });
   });

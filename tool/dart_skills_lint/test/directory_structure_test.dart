@@ -96,12 +96,15 @@ void main() {
 
           // ignore: avoid_print
           print(
-              'DEBUG errors: ${validationResult.validationErrors.map((e) => "${e.ruleId}: ${e.message}").toList()}');
+            'DEBUG errors: ${validationResult.validationErrors.map((e) => "${e.ruleId}: ${e.message}").toList()}',
+          );
           expect(validationResult.isValid, isFalse);
           expect(
-              validationResult.validationErrors
-                  .any((e) => e.ruleId == Validator.skillFileInaccessible),
-              isTrue);
+            validationResult.validationErrors.any(
+              (e) => e.ruleId == Validator.skillFileInaccessible,
+            ),
+            isTrue,
+          );
         } catch (e, s) {
           fail('Unexpected exception during validation: $e\n$s');
         }
@@ -117,23 +120,23 @@ void main() {
       await IOOverrides.runWithIOOverrides(() async {
         try {
           final validator = Validator(
-            ruleOverrides: {
-              Validator.skillFileInaccessible: AnalysisSeverity.warning,
-            },
+            ruleOverrides: {Validator.skillFileInaccessible: AnalysisSeverity.warning},
           );
           final ValidationResult validationResult = await validator.validate(skillDir);
 
           // ignore: avoid_print
           print(
-              'DEBUG errors (override): ${validationResult.validationErrors.map((e) => "${e.ruleId}: ${e.message}").toList()}');
+            'DEBUG errors (override): ${validationResult.validationErrors.map((e) => "${e.ruleId}: ${e.message}").toList()}',
+          );
           expect(validationResult.isValid, isTrue);
           expect(
-              validationResult.validationErrors.any(
-                (e) =>
-                    e.ruleId == Validator.skillFileInaccessible &&
-                    e.severity == AnalysisSeverity.warning,
-              ),
-              isTrue);
+            validationResult.validationErrors.any(
+              (e) =>
+                  e.ruleId == Validator.skillFileInaccessible &&
+                  e.severity == AnalysisSeverity.warning,
+            ),
+            isTrue,
+          );
         } catch (e, s) {
           fail('Unexpected exception during validation: $e\n$s');
         }
