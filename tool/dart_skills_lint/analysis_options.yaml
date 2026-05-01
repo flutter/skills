@@ -15,6 +15,8 @@ analyzer:
     strict-casts: true
     strict-inference: true
     strict-raw-types: true
+  plugins:
+    - dart_code_linter
   errors:
     # allow deprecated members (we do this because otherwise we have to annotate
     # every member in every test, assert, etc, when we or the Dart SDK deprecates
@@ -265,3 +267,10 @@ linter:
     - use_truncating_division
     - valid_regexps
     - void_checks
+
+dart_code_linter:
+  metrics:
+    cyclomatic-complexity: 20
+  metrics-exclude:
+    - lib/src/entry_point.dart
+    - lib/src/config_parser.dart

@@ -37,6 +37,9 @@ jobs:
 
       - run: dart analyze --fatal-infos
 
+      - name: Run cyclomatic complexity check
+        run: dart run dart_code_linter:metrics analyze lib
+
       - run: dart test
 
   validate_skills:
