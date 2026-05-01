@@ -1,16 +1,3 @@
 {
-  "skills": {
-    "dart-modern-features": [
-      {
-        "rule_id": "check-trailing-whitespace",
-        "file_name": "SKILL.md"
-      }
-    ],
-    "dart-matcher-best-practices": [
-      {
-        "rule_id": "check-trailing-whitespace",
-        "file_name": "SKILL.md"
-      }
-    ]
-  }
+  "skills": {}
 }
