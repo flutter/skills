@@ -420,7 +420,7 @@ Future<(bool globalAnyFailed, bool anySkillsValidated)> _processSkillPaths({
       fix: fix,
       fixApply: fixApply,
       localIgnoreFile: localIgnoreFile,
-      baselineRootDir: skillDir,
+      baselineRootDir: skillDir.parent,
     );
 
     if (!generateBaseline) {

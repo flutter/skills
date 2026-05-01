@@ -195,7 +195,7 @@ dart_skills_lint:
       ], workingDirectory: tempDir.path);
       await genProcess.shouldExit(0); // Exits 0 if --generate-baseline passed
 
-      final ignoreFile = File('${skillDir.path}/$defaultIgnoreFileName');
+      final ignoreFile = File('${skillDir.parent.path}/$defaultIgnoreFileName');
       expect(ignoreFile.existsSync(), isTrue);
 
       final String content = await ignoreFile.readAsString();

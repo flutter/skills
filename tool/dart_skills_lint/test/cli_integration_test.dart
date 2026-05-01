@@ -46,7 +46,7 @@ void main() {
       ]);
       await process.shouldExit(0);
 
-      final ignoreFile = File('${skillDir.path}/$defaultIgnoreFileName');
+      final ignoreFile = File('${skillDir.parent.path}/$defaultIgnoreFileName');
       expect(ignoreFile.existsSync(), isTrue);
 
       final String content = await ignoreFile.readAsString();
@@ -56,6 +56,31 @@ void main() {
 
       // Should be 1 entry only! Both relative link failures utilize the same ruleId/fileName de-duplication.
       expect(ignores.length, equals(1));
+    });
+
+    test('individual skill baseline is loaded on subsequent runs', () async {
+      final Directory skillDir = await Directory('${tempDir.path}/test-skill').create();
+      await File('${skillDir.path}/SKILL.md').writeAsString(
+        '${buildFrontmatter(name: 'test-skill')}[Link](missing.md)\n',
+      );
+
+      final TestProcess genProcess = await TestProcess.start('dart', [
+        'bin/cli.dart',
+        '-s',
+        skillDir.path,
+        '--generate-baseline',
+      ]);
+      await genProcess.shouldExit(0);
+
+      final ignoreFile = File('${tempDir.path}/$defaultIgnoreFileName');
+      expect(ignoreFile.existsSync(), isTrue);
+
+      final TestProcess runProcess = await TestProcess.start('dart', [
+        'bin/cli.dart',
+        '-s',
+        skillDir.path,
+      ]);
+      await runProcess.shouldExit(0);
     });
 
     test(
