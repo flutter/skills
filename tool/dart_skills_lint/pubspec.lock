@@ -305,6 +305,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.2"
+  popmark:
+    dependency: "direct main"
+    description:
+      name: popmark
+      sha256: aa2b3011038d1b4d675d0829cbfed6059ebcb4833af0b4b43ae0d4e8102d7c0b
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.1"
   pub_semver:
     dependency: transitive
     description:

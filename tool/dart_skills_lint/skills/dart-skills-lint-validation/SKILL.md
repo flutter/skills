@@ -119,6 +119,30 @@ If you are integrating the linter into a repository with existing skills that ma
 - This will create a `dart_skills_lint_ignore.json` file.
 - **Note on False Positives**: The linter currently evaluates links inside markdown code blocks. If your skill documentation includes examples with placeholder links or images, they might be flagged as broken. Use the baseline file to ignore these specific false positives.
 
+## Validating Code Blocks
+
+You can enable validation of Dart code blocks in your skill files using the `check-dart-code-blocks` rule. This rule uses `popmark` to execute code blocks and ensure they are valid.
+
+To enable it, add it to your `dart_skills_lint.yaml`:
+```yaml
+dart_skills_lint:
+  rules:
+    check-dart-code-blocks: error
+```
+
+### Configuration
+
+You can specify imports for the code blocks in the `metadata` field of the skill's YAML frontmatter:
+```yaml
+---
+name: my-skill
+description: A skill that does something.
+metadata:
+  popmark:
+    imports: "dart:io;dart:math"
+---
+```
+
 ## Authoring Custom Rules
 To author custom rules, extend the `SkillRule` class and pass them to `validateSkills`.
 
