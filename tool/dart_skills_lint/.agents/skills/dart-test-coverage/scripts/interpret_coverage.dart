@@ -26,8 +26,45 @@ void main(List<String> args) {
       .whereType<File>()
       .where((f) => f.path.endsWith('.vm.json'));
 
-  final coverageData = <String, Map<int, int>>{}; // file -> (line -> hits)
+  final coverageData = processCoverage(files, packageName);
 
+  if (coverageData.isEmpty) {
+    print('No coverage data found for the specified criteria.');
+    return;
+  }
+
+  // Print summary
+  coverageData.forEach((source, lineHits) {
+    final totalLines = lineHits.length;
+    final coveredLines = lineHits.values.where((hits) => hits > 0).length;
+    final percent = totalLines > 0
+        ? (coveredLines / totalLines * 100).toStringAsFixed(1)
+        : '100';
+
+    print('$source: $percent% ($coveredLines/$totalLines lines)');
+
+    // Show missed lines
+    final missed =
+        lineHits.entries.where((e) => e.value == 0).map((e) => e.key).toList()
+          ..sort();
+
+    if (missed.isNotEmpty) {
+      print('  Missed lines: ${missed.join(', ')}');
+    }
+  });
+}
+
+/// Processes a list of coverage files and returns a map of file paths to line hit counts.
+///
+/// The returned map structure is: `{ file_uri: { line_number: hit_count } }`.
+///
+/// If [packageName] is provided, only files starting with `package:$packageName/` are included.
+/// Files containing `/test/` are skipped.
+Map<String, Map<int, int>> processCoverage(
+  Iterable<File> files,
+  String? packageName,
+) {
+  final coverageData = <String, Map<int, int>>{}; // file -> (line -> hits)
   for (final file in files) {
     final content = file.readAsStringSync();
     final json = jsonDecode(content) as Map<String, dynamic>;
@@ -54,29 +91,5 @@ void main(List<String> args) {
       }
     }
   }
-
-  if (coverageData.isEmpty) {
-    print('No coverage data found for the specified criteria.');
-    return;
-  }
-
-  // Print summary
-  coverageData.forEach((source, lineHits) {
-    final totalLines = lineHits.length;
-    final coveredLines = lineHits.values.where((hits) => hits > 0).length;
-    final percent = totalLines > 0
-        ? (coveredLines / totalLines * 100).toStringAsFixed(1)
-        : '100';
-
-    print('$source: $percent% ($coveredLines/$totalLines lines)');
-
-    // Show missed lines
-    final missed =
-        lineHits.entries.where((e) => e.value == 0).map((e) => e.key).toList()
-          ..sort();
-
-    if (missed.isNotEmpty) {
-      print('  Missed lines: ${missed.join(', ')}');
-    }
-  });
+  return coverageData;
 }

@@ -14,6 +14,9 @@ Use this skill when you need to add a new validation rule to the `dart_skills_li
 ### 1. Create the Rule Class
 Create a new file in `lib/src/rules/` extending `SkillRule`.
 
+> [!TIP]
+> If your rule expects a specific structure in the skill's YAML frontmatter (e.g., inside `metadata`), document this structure clearly in the class Dart docstring.
+
 ```dart
 // lib/src/rules/my_new_rule.dart
 
@@ -32,6 +35,24 @@ class MyNewRule extends SkillRule {
     return errors;
   }
 }
+```
+
+#### Accessing YAML Frontmatter
+If your rule needs configuration from the skill's YAML frontmatter, you can access it via `context.parsedYaml`.
+
+```dart
+  @override
+  Future<List<ValidationError>> validate(SkillContext context) async {
+    final errors = <ValidationError>[];
+    final yaml = context.parsedYaml;
+    if (yaml != null) {
+      final metadata = yaml['metadata'];
+      if (metadata is Map) {
+        // Read your custom config here
+      }
+    }
+    return errors;
+  }
 ```
 
 ### 2. Register the Rule in `lib/src/rule_registry.dart`
@@ -114,6 +135,35 @@ void main() {
     });
   });
 }
+```
+
+### Alternative Approach: File System Interaction
+If the rule interacts with the file system or wraps an external CLI tool (like `popmark`), you should use a temporary directory for testing instead of in-memory mocks.
+
+```dart
+    late Directory tempDir;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('my_rule_test.');
+    });
+
+    tearDown(() async {
+      if (tempDir.existsSync()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    test('flags invalid file content', () async {
+      final Directory skillDir = await Directory('${tempDir.path}/test-skill').create();
+      await File('${skillDir.path}/SKILL.md').writeAsString('Invalid content');
+
+      final rule = MyNewRule(severity: AnalysisSeverity.warning);
+      final context = SkillContext(directory: skillDir, rawContent: 'Invalid content');
+
+      final List<ValidationError> errors = await rule.validate(context);
+
+      expect(errors, isNotEmpty);
+    });
 ```
 
 ### Integration Tests
