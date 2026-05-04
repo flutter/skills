@@ -6,7 +6,7 @@
 ///
 /// Generates synthetic skill directories at multiple sizes, runs them through
 /// `validateSkills` with `--generate-baseline`, and prints a wall-clock table.
-/// Intentionally not run in CI — see `CONTRIBUTING.md`.
+/// Intentionally not run in CI — see `bench/README.md`.
 library;
 
 import 'dart:io';
@@ -37,49 +37,74 @@ Future<void> main(List<String> args) async {
     ..addOption(_warmupFlag, defaultsTo: '1', help: 'Number of untimed warmup runs before timing.')
     ..addFlag(_helpFlag, abbr: 'h', negatable: false, help: 'Show usage information.');
 
-  final ArgResults results;
   try {
-    results = parser.parse(args);
+    final ArgResults results = parser.parse(args);
+
+    if (results[_helpFlag] as bool) {
+      stdout.writeln('Usage: dart run bench/baseline_throughput.dart [options]');
+      stdout.writeln(parser.usage);
+      return;
+    }
+
+    final List<int> sizes = _parseSizes(results[_sizesFlag] as String);
+    final int errorsPerSkill = _clampErrorsPerSkill(
+      _parsePositiveInt(results[_errorsPerSkillFlag] as String, _errorsPerSkillFlag),
+    );
+    final int runs = _parsePositiveInt(results[_runsFlag] as String, _runsFlag);
+    final int warmup = _parseNonNegativeInt(results[_warmupFlag] as String, _warmupFlag);
+
+    final rows = <_Row>[];
+    for (final n in sizes) {
+      final _Row row = await _benchSize(
+        n: n,
+        errorsPerSkill: errorsPerSkill,
+        runs: runs,
+        warmup: warmup,
+      );
+      rows.add(row);
+    }
+
+    _printTable(rows);
   } on FormatException catch (e) {
     stderr.writeln('Error: ${e.message}');
     stderr.writeln(parser.usage);
-    return;
   }
+}
 
-  if (results[_helpFlag] as bool) {
-    stdout.writeln('Usage: dart run bench/baseline_throughput.dart [options]');
-    stdout.writeln(parser.usage);
-    return;
+int _parsePositiveInt(String raw, String flag) {
+  final int value =
+      int.tryParse(raw) ?? (throw FormatException('--$flag must be an integer (got "$raw").'));
+  if (value < 1) {
+    throw FormatException('--$flag must be >= 1 (got $value).');
   }
+  return value;
+}
 
-  final List<int> sizes = _parseSizes(results[_sizesFlag] as String);
-  final int errorsPerSkill = _clampErrorsPerSkill(
-    int.parse(results[_errorsPerSkillFlag] as String),
-  );
-  final int runs = int.parse(results[_runsFlag] as String);
-  final int warmup = int.parse(results[_warmupFlag] as String);
-
-  final rows = <_Row>[];
-  for (final n in sizes) {
-    final _Row row = await _benchSize(
-      n: n,
-      errorsPerSkill: errorsPerSkill,
-      runs: runs,
-      warmup: warmup,
-    );
-    rows.add(row);
+int _parseNonNegativeInt(String raw, String flag) {
+  final int value =
+      int.tryParse(raw) ?? (throw FormatException('--$flag must be an integer (got "$raw").'));
+  if (value < 0) {
+    throw FormatException('--$flag must be >= 0 (got $value).');
   }
-
-  _printTable(rows);
+  return value;
 }
 
 List<int> _parseSizes(String raw) {
-  return raw
-      .split(',')
-      .map((String s) => s.trim())
-      .where((String s) => s.isNotEmpty)
-      .map(int.parse)
-      .toList();
+  final sizes = <int>[];
+  for (final String token in raw.split(',').map((String s) => s.trim())) {
+    if (token.isEmpty) {
+      continue;
+    }
+    final int? n = int.tryParse(token);
+    if (n == null || n < 1) {
+      throw FormatException('--$_sizesFlag entries must be positive integers (got "$token").');
+    }
+    sizes.add(n);
+  }
+  if (sizes.isEmpty) {
+    throw const FormatException('--sizes must contain at least one positive integer.');
+  }
+  return sizes;
 }
 
 int _clampErrorsPerSkill(int requested) {
@@ -167,8 +192,12 @@ void _writeSyntheticSkill(Directory skillsRoot, int index, int errorsPerSkill) {
             'so the linter records a name-format error.';
 
   // Error 3 (when errorsPerSkill >= 3): an absolute-path link in the body
-  // triggers `check-absolute-paths` (warning, but baseline-recordable).
-  final body = errorsPerSkill >= 3 ? '# Test skill\n\n[abs](/etc/hosts)\n' : '# Test skill\n';
+  // triggers `check-absolute-paths` (warning, but baseline-recordable). Using
+  // `p.absolute(...)` guarantees the link is absolute on the host OS regardless
+  // of platform (POSIX or Windows).
+  final body = errorsPerSkill >= 3
+      ? '# Test skill\n\n[abs](${p.absolute('synthetic-abs-path')})\n'
+      : '# Test skill\n';
 
   final sb = StringBuffer()
     ..writeln('---')
