@@ -53,9 +53,9 @@ Future<void> main(List<String> args) async {
     final int runs = _parsePositiveInt(results[_runsFlag] as String, _runsFlag);
     final int warmup = _parseNonNegativeInt(results[_warmupFlag] as String, _warmupFlag);
 
-    final rows = <_Row>[];
+    final rows = <_BenchResult>[];
     for (final n in sizes) {
-      final _Row row = await _benchSize(
+      final _BenchResult row = await _benchSize(
         n: n,
         errorsPerSkill: errorsPerSkill,
         runs: runs,
@@ -123,7 +123,7 @@ int _clampErrorsPerSkill(int requested) {
   return requested;
 }
 
-Future<_Row> _benchSize({
+Future<_BenchResult> _benchSize({
   required int n,
   required int errorsPerSkill,
   required int runs,
@@ -151,7 +151,7 @@ Future<_Row> _benchSize({
     final int min = samples.first;
     final int max = samples.last;
     final int median = samples[samples.length ~/ 2];
-    return _Row(n: n, minMs: min, medianMs: median, maxMs: max, runs: runs);
+    return (n: n, minMs: min, medianMs: median, maxMs: max, runs: runs);
   } finally {
     if (tempDir.existsSync()) {
       tempDir.deleteSync(recursive: true);
@@ -210,7 +210,7 @@ void _writeSyntheticSkill(Directory skillsRoot, int index, int errorsPerSkill) {
   File(p.join(skillDir.path, 'SKILL.md')).writeAsStringSync(sb.toString());
 }
 
-void _printTable(List<_Row> rows) {
+void _printTable(List<_BenchResult> rows) {
   stdout.writeln('N      | min   | median | max   | runs');
   stdout.writeln('-------|-------|--------|-------|-----');
   for (final row in rows) {
@@ -227,18 +227,4 @@ void _printTable(List<_Row> rows) {
 String _padRight(String s, int width) => s.padRight(width);
 String _padLeft(String s, int width) => s.padLeft(width);
 
-class _Row {
-  _Row({
-    required this.n,
-    required this.minMs,
-    required this.medianMs,
-    required this.maxMs,
-    required this.runs,
-  });
-
-  final int n;
-  final int minMs;
-  final int medianMs;
-  final int maxMs;
-  final int runs;
-}
+typedef _BenchResult = ({int n, int minMs, int medianMs, int maxMs, int runs});
