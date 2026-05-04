@@ -60,7 +60,10 @@ class ValidationSession {
     required this.generateBaseline,
     required this.fix,
     required this.fixApply,
-  });
+  }) : _normalizedDirectoryConfigs = [
+         for (final dc in config.directoryConfigs)
+           (normalizedPath: p.normalize(dc.path), config: dc),
+       ];
 
   final Configuration config;
   final Map<String, AnalysisSeverity> resolvedRules;
@@ -72,6 +75,13 @@ class ValidationSession {
   final bool generateBaseline;
   final bool fix;
   final bool fixApply;
+
+  /// [config.directoryConfigs] with each `path` pre-normalized once.
+  ///
+  /// `config` is static for the lifetime of a session, so we pay the
+  /// `p.normalize` cost up front instead of once per skill in
+  /// [_resolveRulesForPath] and [_resolveIgnoreFile].
+  final List<({String normalizedPath, DirectoryConfig config})> _normalizedDirectoryConfigs;
 
   bool _anyFailed = false;
   bool _anySkillsValidated = false;
@@ -102,23 +112,22 @@ class ValidationSession {
     final String? localIgnoreFile = _resolveIgnoreFile(normalizedSkillPath);
     final validator = Validator(ruleOverrides: localRules, customRules: customRules);
 
-    final Map<String, List<IgnoreEntry>> ignoresMap = await _loadIgnores(
-      localIgnoreFile,
-      skillDir.parent,
-    );
+    final ({SkillsIgnores ignores, String ignorePath}) loaded =
+        await _loadIgnores(localIgnoreFile, skillDir.parent);
+    final SkillsIgnores ignores = loaded.ignores;
     final String skillName = p.basename(skillDir.path);
-    final List<IgnoreEntry> skillIgnores = ignoresMap[skillName] ?? [];
+    final List<IgnoreEntry> skillIgnores = ignores.skills[skillName] ?? [];
 
     _anySkillsValidated = true;
     final ValidationResult finalResult = await _runValidationWorkflow(
       skillDir: skillDir,
       validator: validator,
-      ignoresMap: ignoresMap,
-      localIgnoreFile: localIgnoreFile,
-      baselineRootDir: skillDir.parent,
+      ignores: ignores,
     );
 
-    if (!generateBaseline) {
+    if (generateBaseline) {
+      await _saveBaseline(loaded.ignorePath, ignores);
+    } else {
       final String fullPath = p.absolute(skillDir.path);
       for (final ignore in skillIgnores) {
         if (!ignore.used) {
@@ -175,7 +184,9 @@ class ValidationSession {
     }
     entities.sort((a, b) => a.path.compareTo(b.path));
 
-    final Map<String, List<IgnoreEntry>> ignoresMap = await _loadIgnores(localIgnoreFile, rootDir);
+    final ({SkillsIgnores ignores, String ignorePath}) loaded =
+        await _loadIgnores(localIgnoreFile, rootDir);
+    final SkillsIgnores ignores = loaded.ignores;
 
     for (final entity in entities) {
       if (entity is! Directory) {
@@ -189,9 +200,7 @@ class ValidationSession {
       final ValidationResult finalResult = await _runValidationWorkflow(
         skillDir: entity,
         validator: validator,
-        ignoresMap: ignoresMap,
-        localIgnoreFile: localIgnoreFile,
-        baselineRootDir: rootDir,
+        ignores: ignores,
       );
 
       if (!finalResult.isValid) {
@@ -202,8 +211,10 @@ class ValidationSession {
       }
     }
 
-    if (!generateBaseline) {
-      for (final MapEntry<String, List<IgnoreEntry>> entry in ignoresMap.entries) {
+    if (generateBaseline) {
+      await _saveBaseline(loaded.ignorePath, ignores);
+    } else {
+      for (final MapEntry<String, List<IgnoreEntry>> entry in ignores.skills.entries) {
         final String skillName = entry.key;
         for (final IgnoreEntry ignore in entry.value) {
           if (!ignore.used) {
@@ -247,10 +258,9 @@ class ValidationSession {
 
   Map<String, AnalysisSeverity> _resolveRulesForPath(String normalizedPath) {
     final localRules = Map<String, AnalysisSeverity>.from(resolvedRules);
-    for (final DirectoryConfig dirConfig in config.directoryConfigs) {
-      final String normalizedConfigPath = p.normalize(dirConfig.path);
-      if (normalizedPath.startsWith(normalizedConfigPath)) {
-        localRules.addAll(dirConfig.rules);
+    for (final ({String normalizedPath, DirectoryConfig config}) entry in _normalizedDirectoryConfigs) {
+      if (normalizedPath.startsWith(entry.normalizedPath)) {
+        localRules.addAll(entry.config.rules);
         break;
       }
     }
@@ -261,16 +271,22 @@ class ValidationSession {
     if (ignoreFileOverride != null) {
       return ignoreFileOverride;
     }
-    for (final DirectoryConfig dirConfig in config.directoryConfigs) {
-      final String normalizedConfigPath = p.normalize(dirConfig.path);
-      if (normalizedPath.startsWith(normalizedConfigPath)) {
-        return dirConfig.ignoreFile;
+    for (final ({String normalizedPath, DirectoryConfig config}) entry in _normalizedDirectoryConfigs) {
+      if (normalizedPath.startsWith(entry.normalizedPath)) {
+        return entry.config.ignoreFile;
       }
     }
     return null;
   }
 
-  Future<Map<String, List<IgnoreEntry>>> _loadIgnores(
+  /// Loads the ignore JSON for a root, returning both the parsed
+  /// [SkillsIgnores] and the resolved on-disk path it came from (or where it
+  /// would be written).
+  ///
+  /// Returning the [SkillsIgnores] object (not just `.skills`) lets callers
+  /// mutate it in memory across all skills in a root and then save it once,
+  /// instead of doing a load+save round-trip per skill.
+  Future<({SkillsIgnores ignores, String ignorePath})> _loadIgnores(
     String? localIgnoreFile,
     Directory rootDir,
   ) async {
@@ -283,7 +299,7 @@ class ValidationSession {
     if (file.existsSync()) {
       final storage = SkillsIgnoresStorage();
       final SkillsIgnores ignores = await storage.load(ignorePath);
-      return ignores.skills;
+      return (ignores: ignores, ignorePath: ignorePath);
     }
 
     // If a custom ignore file was specified but not found, create an empty one
@@ -297,39 +313,50 @@ class ValidationSession {
       }
     }
 
-    return {};
+    return (ignores: SkillsIgnores(skills: {}), ignorePath: ignorePath);
   }
 
   void _applyIgnores(ValidationResult result, List<IgnoreEntry> ignores) {
+    // Pre-normalize ignore filenames once so the inner loop below is a
+    // straight string comparison instead of repeated path normalization.
+    final List<({IgnoreEntry entry, String normalizedFileName})> preNormalizedIgnores = [
+      for (final ignore in ignores)
+        (entry: ignore, normalizedFileName: p.normalize(ignore.fileName)),
+    ];
+
     for (final ValidationError error in result.validationErrors) {
       if (error.isIgnored) {
         continue;
       }
-      final String fileName = error.file;
-      for (final ignore in ignores) {
-        if (ignore.ruleId == error.ruleId && p.normalize(ignore.fileName) == p.normalize(fileName)) {
+      final String normalizedErrorFile = p.normalize(error.file);
+      for (final pair in preNormalizedIgnores) {
+        if (pair.entry.ruleId == error.ruleId &&
+            pair.normalizedFileName == normalizedErrorFile) {
           error.isIgnored = true;
-          ignore.used = true;
+          pair.entry.used = true;
           break;
         }
       }
     }
   }
 
+  /// Validates [skillDir], applies fixes if requested, and (when
+  /// [generateBaseline] is set) updates [ignores] in memory with any new
+  /// baseline entries for this skill. The caller is responsible for
+  /// persisting [ignores] to disk once after all skills are processed —
+  /// see [_saveBaseline].
   Future<ValidationResult> _runValidationWorkflow({
     required Directory skillDir,
     required Validator validator,
-    required Map<String, List<IgnoreEntry>> ignoresMap,
-    required String? localIgnoreFile,
-    required Directory baselineRootDir,
+    required SkillsIgnores ignores,
   }) async {
     final String skillName = p.basename(skillDir.path);
-    final List<IgnoreEntry> skillIgnores = ignoresMap[skillName] ?? [];
+    final List<IgnoreEntry> skillIgnores = ignores.skills[skillName] ?? [];
 
     final ValidationResult result = await _validateSingleSkill(
       skillDir: skillDir,
       validator: validator,
-      ignoresMap: ignoresMap,
+      skillIgnores: skillIgnores,
     );
 
     final ValidationResult finalResult = await _applyFixesIfNeeded(
@@ -340,7 +367,7 @@ class ValidationSession {
     );
 
     if (generateBaseline) {
-      await _generateBaselineFile(finalResult, localIgnoreFile, baselineRootDir, skillDir);
+      _updateBaselineForSkill(ignores, finalResult, skillName);
     }
 
     return finalResult;
@@ -349,14 +376,13 @@ class ValidationSession {
   Future<ValidationResult> _validateSingleSkill({
     required Directory skillDir,
     required Validator validator,
-    required Map<String, List<IgnoreEntry>> ignoresMap,
+    required List<IgnoreEntry> skillIgnores,
   }) async {
     final String skillName = p.basename(skillDir.path);
     if (!quiet) {
       _log.info('--- Validating skill: $skillName ---');
     }
     final ValidationResult result = await validator.validate(skillDir);
-    final List<IgnoreEntry> skillIgnores = ignoresMap[skillName] ?? [];
     _applyIgnores(result, skillIgnores);
     _printValidationResult(result);
     return result;
@@ -455,19 +481,14 @@ class ValidationSession {
     }
   }
 
-  Future<void> _generateBaselineFile(
+  /// Mutates [ignores] in place to add baseline entries for any non-ignored
+  /// errors in [result] under the [skillName] key. Pure in-memory operation
+  /// — pair with [_saveBaseline] to persist changes.
+  void _updateBaselineForSkill(
+    SkillsIgnores ignores,
     ValidationResult result,
-    String? localIgnoreFile,
-    Directory rootDir,
-    Directory skillDir,
-  ) async {
-    final String ignorePath = localIgnoreFile != null
-        ? p.normalize(_expandPath(localIgnoreFile))
-        : p.join(rootDir.path, defaultIgnoreFileName);
-    final storage = SkillsIgnoresStorage();
-    final SkillsIgnores ignores = await storage.load(ignorePath);
-
-    final String skillName = p.basename(skillDir.path);
+    String skillName,
+  ) {
     final List<IgnoreEntry> currentSkillIgnores = ignores.skills[skillName] ?? [];
     final currentSkillSeen = <String>{};
     for (final ignore in currentSkillIgnores) {
@@ -491,9 +512,13 @@ class ValidationSession {
     } else {
       ignores.skills.remove(skillName);
     }
+  }
 
+  /// Writes [ignores] to [ignorePath]. Logs and swallows write errors to
+  /// match the legacy `_generateBaselineFile` behavior.
+  Future<void> _saveBaseline(String ignorePath, SkillsIgnores ignores) async {
     try {
-      await storage.save(ignorePath, ignores);
+      await SkillsIgnoresStorage().save(ignorePath, ignores);
     } catch (e) {
       _log.warning('Failed to generate baseline file at $ignorePath: $e');
     }
