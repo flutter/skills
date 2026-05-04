@@ -2,26 +2,20 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
-import 'package:path/path.dart' as p;
 
 import 'config_parser.dart';
-import 'fixable_rule.dart';
 import 'models/analysis_severity.dart';
 import 'models/check_type.dart';
-import 'models/ignore_entry.dart';
-import 'models/skill_context.dart';
 import 'models/skill_rule.dart';
-import 'models/skills_ignores.dart';
-import 'models/validation_error.dart';
 import 'rule_registry.dart';
-import 'skills_ignores_storage.dart';
-import 'validator.dart';
+import 'validation_session.dart';
+
+export 'validation_session.dart';
 
 final _log = Logger('dart_skills_lint');
 
@@ -36,22 +30,6 @@ const _generateBaselineFlag = 'generate-baseline';
 const _fixFlag = 'fix';
 const _fixApplyFlag = 'fix-apply';
 const _allowMisconfiguredKeysFlag = 'allow-misconfigured-keys';
-
-@visibleForTesting
-const defaultIgnoreFileName = 'dart_skills_lint_ignore.json';
-
-@visibleForTesting
-const skillIsValidMsg = '  Skill is valid.';
-@visibleForTesting
-const skillIsInvalidMsg = '  Skill is invalid:';
-@visibleForTesting
-const warningsMsg = 'Warnings:';
-
-@visibleForTesting
-const evaluatingDirMsg = 'Evaluating directory:';
-
-@visibleForTesting
-const directoryErrorMsg = 'Directory error:';
 
 /// Main entrypoint execution logic for the CLI tool.
 ///
@@ -290,260 +268,42 @@ Future<bool> validateSkillsInternal({
   Configuration? config,
   List<SkillRule> customRules = const [],
 }) async {
-  config ??= Configuration();
-  var globalAnyFailed = false;
-  var anySkillsValidated = false;
-
-  // 1. Process individual --skill (-s) paths
-  final ({bool globalAnyFailed, bool anySkillsValidated}) result = await _processSkillPaths(
-    individualSkillPaths: individualSkillPaths,
-    quiet: quiet,
-    config: config,
+  final session = ValidationSession(
+    config: config ?? Configuration(),
     resolvedRules: resolvedRules,
     ignoreFileOverride: ignoreFileOverride,
     customRules: customRules,
     printWarnings: printWarnings,
+    fastFail: fastFail,
+    quiet: quiet,
     generateBaseline: generateBaseline,
     fix: fix,
     fixApply: fixApply,
-    fastFail: fastFail,
   );
-  globalAnyFailed = result.globalAnyFailed;
-  anySkillsValidated = result.anySkillsValidated;
-
-  if (globalAnyFailed && fastFail) {
-    return false;
-  }
-
-  // 2. Process --skills-directory (-d) roots
-  final ({bool globalAnyFailed, bool anySkillsValidated}) dirResult =
-      await _processSkillDirectories(
-        skillDirPaths: skillDirPaths,
-        quiet: quiet,
-        config: config,
-        resolvedRules: resolvedRules,
-        ignoreFileOverride: ignoreFileOverride,
-        customRules: customRules,
-        printWarnings: printWarnings,
-        generateBaseline: generateBaseline,
-        fix: fix,
-        fixApply: fixApply,
-        fastFail: fastFail,
-      );
-  globalAnyFailed = globalAnyFailed || dirResult.globalAnyFailed;
-  anySkillsValidated = anySkillsValidated || dirResult.anySkillsValidated;
-
-  if (!anySkillsValidated) {
-    var foundSingleSkillPassedToD = false;
-    for (final rootPath in skillDirPaths) {
-      final String expandedRootPath = _expandPath(rootPath);
-      final skillMdFile = File(p.join(expandedRootPath, SkillContext.skillFileName));
-      if (skillMdFile.existsSync()) {
-        _log.severe(
-          'Directory "$expandedRootPath" appears to be an individual skill. Use --skill / -s instead of -d / --skills-directory.',
-        );
-        foundSingleSkillPassedToD = true;
-      }
-    }
-    if (!foundSingleSkillPassedToD) {
-      _log.severe('No skills found to validate in the specified directories.');
-    }
-    globalAnyFailed = true;
-  }
-
-  if (generateBaseline) {
-    globalAnyFailed = false;
-  }
-
-  return !globalAnyFailed;
-}
-
-Future<({bool globalAnyFailed, bool anySkillsValidated})> _processSkillPaths({
-  required List<String> individualSkillPaths,
-  required bool quiet,
-  required Configuration config,
-  required Map<String, AnalysisSeverity> resolvedRules,
-  required String? ignoreFileOverride,
-  required List<SkillRule> customRules,
-  required bool printWarnings,
-  required bool generateBaseline,
-  required bool fix,
-  required bool fixApply,
-  required bool fastFail,
-}) async {
-  var globalAnyFailed = false;
-  var anySkillsValidated = false;
 
   for (final skillPath in individualSkillPaths) {
-    final String normalizedSkillPath = p.normalize(_expandPath(skillPath));
-    if (!quiet) {
-      _log.info('$evaluatingDirMsg $normalizedSkillPath');
-    }
-    final skillDir = Directory(normalizedSkillPath);
-
-    if (!skillDir.existsSync()) {
-      _log.severe('Specified skill directory does not exist: $normalizedSkillPath');
-      globalAnyFailed = true;
-      continue;
-    }
-
-    final Map<String, AnalysisSeverity> localRules = _resolveRulesForPath(
-      normalizedSkillPath,
-      config,
-      resolvedRules,
-    );
-    String? localIgnoreFile = _resolveIgnoreFileForPath(normalizedSkillPath, config);
-
-    if (ignoreFileOverride != null) {
-      localIgnoreFile = ignoreFileOverride;
-    }
-
-    final validator = Validator(ruleOverrides: localRules, customRules: customRules);
-
-    final Map<String, List<IgnoreEntry>> ignoresMap = await _loadIgnores(
-      localIgnoreFile,
-      skillDir.parent,
-    );
-    final String skillName = p.basename(skillDir.path);
-    final List<IgnoreEntry> skillIgnores = ignoresMap[skillName] ?? [];
-
-    anySkillsValidated = true;
-    final ValidationResult finalResult = await _runValidationWorkflow(
-      skillDir: skillDir,
-      validator: validator,
-      ignoresMap: ignoresMap,
-      printWarnings: printWarnings,
-      quiet: quiet,
-      generateBaseline: generateBaseline,
-      fix: fix,
-      fixApply: fixApply,
-      localIgnoreFile: localIgnoreFile,
-      baselineRootDir: skillDir.parent,
-    );
-
-    if (!generateBaseline) {
-      final String fullPath = p.absolute(skillDir.path);
-      for (final ignore in skillIgnores) {
-        if (!ignore.used) {
-          _log.info(
-            "Stale ignore entry found for rule '${ignore.ruleId}' in skill '$skillName' at '$fullPath'. Consider removing it.",
-          );
-        }
-      }
-    }
-
-    if (!finalResult.isValid) {
-      globalAnyFailed = true;
-      if (fastFail) {
-        break;
-      }
-    }
-  }
-  return (globalAnyFailed: globalAnyFailed, anySkillsValidated: anySkillsValidated);
-}
-
-Future<({bool globalAnyFailed, bool anySkillsValidated})> _processSkillDirectories({
-  required List<String> skillDirPaths,
-  required bool quiet,
-  required Configuration config,
-  required Map<String, AnalysisSeverity> resolvedRules,
-  required String? ignoreFileOverride,
-  required List<SkillRule> customRules,
-  required bool printWarnings,
-  required bool generateBaseline,
-  required bool fix,
-  required bool fixApply,
-  required bool fastFail,
-}) async {
-  var globalAnyFailed = false;
-  var anySkillsValidated = false;
-
-  for (final rootPath in skillDirPaths) {
-    final String normalizedRootPath = p.normalize(_expandPath(rootPath));
-    if (!quiet) {
-      _log.info('$evaluatingDirMsg $normalizedRootPath');
-    }
-    final rootDir = Directory(normalizedRootPath);
-
-    if (!rootDir.existsSync()) {
-      _log.severe('Specified root directory does not exist: $normalizedRootPath');
-      globalAnyFailed = true;
-      continue;
-    }
-
-    final Map<String, AnalysisSeverity> localRules = _resolveRulesForPath(
-      normalizedRootPath,
-      config,
-      resolvedRules,
-    );
-    String? localIgnoreFile = _resolveIgnoreFileForPath(normalizedRootPath, config);
-
-    if (ignoreFileOverride != null) {
-      localIgnoreFile = ignoreFileOverride;
-    }
-
-    final validator = Validator(ruleOverrides: localRules, customRules: customRules);
-
-    List<FileSystemEntity> entities;
-    try {
-      entities = await rootDir.list().toList();
-    } catch (_) {
-      _log.severe('  $directoryErrorMsg');
-      _log.severe('    - Failed to list children of: $normalizedRootPath');
-      globalAnyFailed = true;
-      continue;
-    }
-    entities.sort((a, b) => a.path.compareTo(b.path));
-
-    final Map<String, List<IgnoreEntry>> ignoresMap = await _loadIgnores(localIgnoreFile, rootDir);
-
-    for (final entity in entities) {
-      if (entity is Directory) {
-        if (p.basename(entity.path).startsWith('.')) {
-          continue;
-        }
-        anySkillsValidated = true;
-        final ValidationResult finalResult = await _runValidationWorkflow(
-          skillDir: entity,
-          validator: validator,
-          ignoresMap: ignoresMap,
-          printWarnings: printWarnings,
-          quiet: quiet,
-          generateBaseline: generateBaseline,
-          fix: fix,
-          fixApply: fixApply,
-          localIgnoreFile: localIgnoreFile,
-          baselineRootDir: rootDir,
-        );
-
-        if (!finalResult.isValid) {
-          globalAnyFailed = true;
-          if (fastFail) {
-            break;
-          }
-        }
-      }
-    }
-
-    if (!generateBaseline) {
-      for (final MapEntry<String, List<IgnoreEntry>> entry in ignoresMap.entries) {
-        final String skillName = entry.key;
-        for (final IgnoreEntry ignore in entry.value) {
-          if (!ignore.used) {
-            final String fullPath = p.absolute(p.join(rootDir.path, skillName));
-            _log.info(
-              "Stale ignore entry found for rule '${ignore.ruleId}' in skill '$skillName' at '$fullPath'. Consider removing it.",
-            );
-          }
-        }
-      }
-    }
-
-    if (globalAnyFailed && fastFail) {
+    final bool keepGoing = await session.processIndividualSkill(skillPath);
+    if (!keepGoing) {
       break;
     }
   }
-  return (globalAnyFailed: globalAnyFailed, anySkillsValidated: anySkillsValidated);
+  if (session.anyFailed && fastFail) {
+    return false;
+  }
+
+  for (final rootPath in skillDirPaths) {
+    final bool keepGoing = await session.processSkillRoot(rootPath);
+    if (!keepGoing) {
+      break;
+    }
+  }
+
+  session.reportNoSkillsValidated(skillDirPaths);
+
+  if (generateBaseline) {
+    return true;
+  }
+  return !session.anyFailed;
 }
 
 @visibleForTesting
@@ -585,313 +345,10 @@ Map<String, AnalysisSeverity> resolveRules(ArgResults results, Configuration con
   return resolved;
 }
 
-Map<String, AnalysisSeverity> _resolveRulesForPath(
-  String normalizedPath,
-  Configuration config,
-  Map<String, AnalysisSeverity> baseRules,
-) {
-  final localRules = Map<String, AnalysisSeverity>.from(baseRules);
-  for (final DirectoryConfig dirConfig in config.directoryConfigs) {
-    final String normalizedConfigPath = p.normalize(dirConfig.path);
-    if (normalizedPath.startsWith(normalizedConfigPath)) {
-      localRules.addAll(dirConfig.rules);
-      break;
-    }
-  }
-  return localRules;
-}
-
-String? _resolveIgnoreFileForPath(String normalizedPath, Configuration config) {
-  for (final DirectoryConfig dirConfig in config.directoryConfigs) {
-    final String normalizedConfigPath = p.normalize(dirConfig.path);
-    if (normalizedPath.startsWith(normalizedConfigPath)) {
-      return dirConfig.ignoreFile;
-    }
-  }
-  return null;
-}
-
-Future<Map<String, List<IgnoreEntry>>> _loadIgnores(
-  String? ignoreFileOverride,
-  Directory rootDir,
-) async {
-  final String ignorePath = ignoreFileOverride != null
-      ? p.normalize(_expandPath(ignoreFileOverride))
-      : p.join(rootDir.path, defaultIgnoreFileName);
-
-  final file = File(ignorePath);
-
-  if (file.existsSync()) {
-    final storage = SkillsIgnoresStorage();
-    final SkillsIgnores ignores = await storage.load(ignorePath);
-    return ignores.skills;
-  }
-
-  // If a custom ignore file was specified but not found, create an empty one
-  // so the user can start adding ignores to it.
-  if (ignoreFileOverride != null) {
-    _log.warning('File not found generating-baseline');
-    try {
-      await file.writeAsString(jsonEncode({SkillsIgnores.skillsKey: <String, dynamic>{}}));
-    } catch (_) {
-      // Ignore write errors, we will just return empty ignores.
-    }
-  }
-
-  return {};
-}
-
-void _applyIgnores(ValidationResult result, List<IgnoreEntry> ignores) {
-  for (final ValidationError error in result.validationErrors) {
-    if (error.isIgnored) {
-      continue;
-    }
-    final String fileName = error.file;
-    for (final ignore in ignores) {
-      if (ignore.ruleId == error.ruleId && p.normalize(ignore.fileName) == p.normalize(fileName)) {
-        error.isIgnored = true;
-        ignore.used = true;
-        break;
-      }
-    }
-  }
-}
-
-Future<ValidationResult> _validateSingleSkill({
-  required Directory skillDir,
-  required Validator validator,
-  required Map<String, List<IgnoreEntry>> ignoresMap,
-  required bool printWarnings,
-  required bool quiet,
-}) async {
-  final String skillName = p.basename(skillDir.path);
-  if (!quiet) {
-    _log.info('--- Validating skill: $skillName ---');
-  }
-  final ValidationResult result = await validator.validate(skillDir);
-  final List<IgnoreEntry> skillIgnores = ignoresMap[skillName] ?? [];
-  _applyIgnores(result, skillIgnores);
-  _printValidationResult(result, printWarnings, quiet);
-  return result;
-}
-
-Future<ValidationResult> _applyFixesIfNeeded({
-  required Directory skillDir,
-  required ValidationResult result,
-  required Validator validator,
-  required List<IgnoreEntry> skillIgnores,
-  required bool fix,
-  required bool fixApply,
-  required bool quiet,
-}) async {
-  if (!fix && !fixApply) {
-    return result;
-  }
-
-  final SkillContext? context = result.context;
-  if (context == null) {
-    return result;
-  }
-
-  final String skillName = p.basename(skillDir.path);
-  final skillMdFile = File(p.join(skillDir.path, SkillContext.skillFileName));
-  if (!skillMdFile.existsSync()) {
-    return result;
-  }
-
-  String currentContent = context.rawContent;
-  final originalContent = currentContent;
-  var modified = false;
-
-  for (final SkillRule rule in validator.rules) {
-    if (rule is FixableRule) {
-      final bool hasErrors = result.validationErrors.any(
-        (e) => e.ruleId == rule.name && !e.isIgnored,
-      );
-      if (hasErrors) {
-        try {
-          final String newContent = await rule.fix(
-            SkillContext.skillFileName,
-            currentContent,
-            context.directory,
-          );
-          if (newContent != currentContent) {
-            currentContent = newContent;
-            modified = true;
-          }
-        } catch (e) {
-          _log.severe("  Failed to apply fix for rule '${rule.name}': $e");
-        }
-      }
-    }
-  }
-
-  if (modified) {
-    if (fixApply) {
-      await skillMdFile.writeAsString(currentContent);
-      if (!quiet) {
-        _log.info('  Applied fixes for $skillName');
-      }
-      final ValidationResult newResult = await validator.validate(skillDir);
-      _applyIgnores(newResult, skillIgnores);
-      return newResult;
-    } else if (fix) {
-      if (!quiet) {
-        _log.info('  [Dry Run] Proposed changes for $skillName (SKILL.md):');
-        _printDiff(originalContent, currentContent);
-      }
-    }
-  }
-
-  return result;
-}
-
-/// Validates a single skill, applies fixes if requested, and generates a baseline if requested.
-///
-/// Returns the [ValidationResult] after fixes are applied.
-Future<ValidationResult> _runValidationWorkflow({
-  required Directory skillDir,
-  required Validator validator,
-  required Map<String, List<IgnoreEntry>> ignoresMap,
-  required bool printWarnings,
-  required bool quiet,
-  required bool generateBaseline,
-  required bool fix,
-  required bool fixApply,
-  required String? localIgnoreFile,
-  required Directory baselineRootDir,
-}) async {
-  final String skillName = p.basename(skillDir.path);
-  final List<IgnoreEntry> skillIgnores = ignoresMap[skillName] ?? [];
-
-  final ValidationResult result = await _validateSingleSkill(
-    skillDir: skillDir,
-    validator: validator,
-    ignoresMap: ignoresMap,
-    printWarnings: printWarnings,
-    quiet: quiet,
-  );
-
-  final ValidationResult finalResult = await _applyFixesIfNeeded(
-    skillDir: skillDir,
-    result: result,
-    validator: validator,
-    skillIgnores: skillIgnores,
-    fix: fix,
-    fixApply: fixApply,
-    quiet: quiet,
-  );
-
-  if (generateBaseline) {
-    await _generateBaselineFile(finalResult, localIgnoreFile, baselineRootDir, skillDir);
-  }
-
-  return finalResult;
-}
-
-/// Prints a simple line-by-line diff between [original] and [modified].
-///
-/// **Limitation**: This naive diff algorithm does not handle line additions or
-/// removals well, as it compares lines at the same index. It is sufficient for
-/// current fixers that only modify existing lines, but should be replaced with
-/// a more robust diffing solution (e.g., `package:diff`) if future fixers
-/// add or remove lines.
-void _printDiff(String original, String modified) {
-  final List<String> origLines = original.split('\n');
-  final List<String> modLines = modified.split('\n');
-  final int maxLines = origLines.length > modLines.length ? origLines.length : modLines.length;
-  for (var i = 0; i < maxLines; i++) {
-    final String orig = i < origLines.length ? origLines[i] : '';
-    final String mod = i < modLines.length ? modLines[i] : '';
-    if (orig != mod) {
-      if (orig.isNotEmpty) {
-        _log.info('- Line ${i + 1}: $orig');
-      }
-      if (mod.isNotEmpty) {
-        _log.info('+ Line ${i + 1}: $mod');
-      }
-    }
-  }
-}
-
-Future<void> _generateBaselineFile(
-  ValidationResult result,
-  String? ignoreFileOverride,
-  Directory rootDir,
-  Directory skillDir,
-) async {
-  final String ignorePath = ignoreFileOverride != null
-      ? p.normalize(_expandPath(ignoreFileOverride))
-      : p.join(rootDir.path, defaultIgnoreFileName);
-  final storage = SkillsIgnoresStorage();
-  final SkillsIgnores ignores = await storage.load(ignorePath);
-
-  final String skillName = p.basename(skillDir.path);
-  final List<IgnoreEntry> currentSkillIgnores = ignores.skills[skillName] ?? [];
-  final currentSkillSeen = <String>{};
-  for (final ignore in currentSkillIgnores) {
-    currentSkillSeen.add('${ignore.ruleId}:${ignore.fileName}');
-  }
-
-  for (final ValidationError error in result.validationErrors) {
-    if (!error.isIgnored) {
-      final key = '${error.ruleId}:${error.file}';
-      if (currentSkillSeen.contains(key)) {
-        continue;
-      }
-      currentSkillSeen.add(key);
-
-      currentSkillIgnores.add(IgnoreEntry(ruleId: error.ruleId, fileName: error.file));
-    }
-  }
-
-  if (currentSkillIgnores.isNotEmpty) {
-    ignores.skills[skillName] = currentSkillIgnores;
-  } else {
-    ignores.skills.remove(skillName);
-  }
-
-  try {
-    await storage.save(ignorePath, ignores);
-  } catch (e) {
-    _log.warning('Failed to generate baseline file at $ignorePath: $e');
-  }
-}
-
 void _printUsage(ArgParser parser, [String? error]) {
   if (error != null) {
     _log.severe('Error: $error');
   }
   _log.info('Usage: dart_skills_lint [options] --$_skillsDirectoryFlag <$_skillsDirectoryFlag>');
   _log.info(parser.usage);
-}
-
-void _printValidationResult(ValidationResult result, bool printWarnings, bool quiet) {
-  if (result.isValid) {
-    if (!quiet) {
-      _log.info('  $skillIsValidMsg');
-    }
-  } else {
-    _log.severe('  $skillIsInvalidMsg');
-    for (final String error in result.errors) {
-      _log.severe('    - $error');
-    }
-  }
-
-  if (printWarnings && result.warnings.isNotEmpty) {
-    _log.warning('  $warningsMsg');
-    for (final String warning in result.warnings) {
-      _log.warning('    - $warning');
-    }
-  }
-}
-
-String _expandPath(String path) {
-  if (path.startsWith('~/')) {
-    final String? homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-    if (homeDir != null) {
-      return p.join(homeDir, path.substring(2));
-    }
-  }
-  return path;
 }
