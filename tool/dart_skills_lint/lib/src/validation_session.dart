@@ -94,7 +94,7 @@ class ValidationSession {
   /// Returns `true` if the caller should continue iterating, `false` to
   /// stop. Only a real validation failure under [fastFail] returns `false`;
   /// a missing directory contributes to [anyFailed] but still allows the
-  /// caller to continue (matches the original CLI semantics).
+  /// caller to continue.
   Future<bool> processIndividualSkill(String skillPath) async {
     final String normalizedSkillPath = p.normalize(_expandPath(skillPath));
     if (!quiet) {
@@ -155,9 +155,9 @@ class ValidationSession {
   ///
   /// Returns `true` if the caller should continue iterating, `false` to
   /// stop. Missing-root and listing-failure errors contribute to [anyFailed]
-  /// but allow the caller to continue (matches the original CLI semantics).
-  /// After a successful iteration, returns `false` if [fastFail] is set and
-  /// any failure has accumulated across the run so far.
+  /// but allow the caller to continue. After a successful iteration, returns
+  /// `false` if [fastFail] is set and any failure has accumulated across the
+  /// run so far.
   Future<bool> processSkillRoot(String rootPath) async {
     final String normalizedRootPath = p.normalize(_expandPath(rootPath));
     if (!quiet) {
@@ -516,8 +516,9 @@ class ValidationSession {
     }
   }
 
-  /// Writes [ignores] to [ignorePath]. Logs and swallows write errors to
-  /// match the legacy `_generateBaselineFile` behavior.
+  /// Writes [ignores] to [ignorePath]. Write failures are logged at warning
+  /// level and otherwise swallowed so a single I/O error does not abort the
+  /// rest of the run.
   Future<void> _saveBaseline(String ignorePath, SkillsIgnores ignores) async {
     try {
       await SkillsIgnoresStorage().save(ignorePath, ignores);
