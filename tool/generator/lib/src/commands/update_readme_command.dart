@@ -102,7 +102,7 @@ class UpdateReadmeCommand extends BaseYamlCommand {
       // Ensure we use forward slashes for the markdown link.
       relativeLink = relativeLink.replaceAll('\\', '/');
 
-      final prompt = existingPrompts[skill.name] ?? skill.examplePrompt ?? '';
+      final prompt = skill.examplePrompt ?? existingPrompts[skill.name] ?? '';
 
       buffer.writeln(
         '| [${skill.name}]($relativeLink) | ${skill.description} | $prompt |',
