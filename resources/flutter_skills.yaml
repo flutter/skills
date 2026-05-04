@@ -5,12 +5,12 @@
 # This is the configuration file for the skill generator.
 # To generate skills, use the following command (from the `tool` directory):
 # dart run skills generate-skill --config ../resources/flutter_skills.yaml --output ../skills
-
 - name: flutter-add-integration-test
   description: Configures Flutter Driver for app interaction and converts MCP
     actions into permanent integration tests. Use when adding integration
     testing to a project, exploring UI components via MCP, or automating user
     flows with the integration_test package.
+  examplePrompt: "Add an integration test that logs in and navigates to the settings page."
   instructions: |
     1. **Project Setup and Dependency Management:**
         * Add the `integration_test` package as a `dev_dependency` to your `pubspec.yaml` file. This can be done by running `flutter pub add 'dev:integration_test:{"sdk":"flutter"}'`.
@@ -57,6 +57,7 @@
   description: Fixes Flutter layout errors (overflows, unbounded constraints)
     using Dart and Flutter MCP tools. Use when addressing "RenderFlex overflowed",
     "Vertical viewport was given unbounded height", or similar layout issues.
+  examplePrompt: "Fix the overflow error on the profile page when the keyboard is visible."
   instructions: |
     1.  **Identify the Layout Error:**
         *   Recognize common Flutter framework errors, including layout errors.
@@ -101,6 +102,7 @@
   description: Adds interactive widget previews to the project using the
     previews.dart system. Use when creating new UI components or updating
     existing screens to ensure consistent design and interactive testing.
+  examplePrompt: "Create a preview for the ProductCard widget with different price states."
   instructions: |
     1. Defining Widget Previews:
     *   To preview a widget, use the `@Preview` annotation defined in `package:flutter/widget_previews.dart`.
@@ -128,6 +130,7 @@
   description: Architects a Flutter application using the recommended layered
     approach (UI, Logic, Data). Use when structuring a new project or
     refactoring for scalability.
+  examplePrompt: "Refactor the authentication flow to follow the recommended layered architecture."
   instructions: |
     **1. Understand the Core Principles and Layers:**
     *   **Separation of Concerns** is the most important principle to follow when designing your Flutter app. This principle makes your code less error-prone by keeping widgets "dumb".
@@ -179,6 +182,7 @@
   description: Use `LayoutBuilder`, `MediaQuery`, or `Expanded/Flexible` to
     create a layout that adapts to different screen sizes. Use when you need the
     UI to look good on both mobile and tablet/desktop form factors.
+  examplePrompt: "Make the home screen responsive so it displays a grid on tablets and a list on phones."
   instructions: |
     1.  **Determine the available space**:
         *   Use `MediaQuery.sizeOf(context)` or `LayoutBuilder` to get the size of the window your app is currently running in.
@@ -225,6 +229,7 @@
   description: Configure `MaterialApp.router` using a package like `go_router`
     for advanced URL-based navigation. Use when developing web applications or
     mobile apps that require specific deep linking and browser history support.
+  examplePrompt: "Set up GoRouter with paths for home, details, and settings."
   instructions: |
     1.  **Create a new Flutter application**:
         *   Use the command `flutter create <app-name>`. For example, `flutter create deeplink_cookbook`.
@@ -285,6 +290,7 @@
     UI rendering and user interactions (tapping, scrolling, entering text). Use
     when validating that a specific widget displays correct data and responds to
     events as expected.
+  examplePrompt: "Add a widget test for the CustomButton to verify the onTap callback is called."
   instructions: |
     1.  **Add the `flutter_test` dependency**. This dependency should be included in the `dev_dependencies` section of your `pubspec.yaml` file. If you created your Flutter project using command-line tools or a code editor, this dependency might already be present.
     2.  **Create the widget to test**. For example, you might create a widget that displays a title and a message.
@@ -319,6 +325,7 @@
   description: Add `flutter_localizations` and `intl` dependencies, enable
     "generate true" in `pubspec.yaml`, and create an `l10n.yaml` configuration
     file. Use when initializing localization support for a new Flutter project.
+  examplePrompt: "Initialize localization support and add English and Spanish translations."
   instructions: |
     1.  **Add `flutter_localizations` and `intl` dependencies**:
         *   Add `flutter_localizations` and `intl` packages to your `pubspec.yaml` file. You can do this by running `$ flutter pub add flutter_localizations --sdk=flutter` and `$ flutter pub add intl:any`.
@@ -371,6 +378,7 @@
 - name: flutter-use-http-package
   description: Use the `http` package to execute GET, POST, PUT, or DELETE
     requests. Use when you need to fetch from or send data to a REST API.
+  examplePrompt: "Use the http package to fetch the list of products from the API."
   instructions: |
     1.  **Add the `http` package as a dependency**.
         *   Run `flutter pub add http` in your terminal.
@@ -408,6 +416,7 @@
   description: Create model classes with `fromJson` and `toJson` methods using
     `dart:convert`. Use when manually mapping JSON keys to class properties for
     simple data structures.
+  examplePrompt: "Implement JSON serialization for the User model class."
   instructions: |
     1.  **Import the `dart:convert` library**: Flutter includes a built-in `dart:convert` library that provides a straightforward JSON encoder and decoder. This library allows you to serialize JSON manually.
     2.  **Define a model class**: Create a plain model class, for example, named `User`. This class will contain the properties that correspond to your JSON structure.

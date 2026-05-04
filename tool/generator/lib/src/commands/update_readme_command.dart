@@ -63,10 +63,21 @@ class UpdateReadmeCommand extends BaseYamlCommand {
 
     final content = readmeFile.readAsStringSync();
 
+    // Parse existing example prompts from the README if they exist
+    final existingPrompts = <String, String>{};
+    final tableLineRegex = RegExp(r'^\| \[([^\]]+)\]\([^)]+\) \| [^|]+ \| ([^|]+) \|', multiLine: true);
+    for (final match in tableLineRegex.allMatches(content)) {
+      final skillName = match.group(1)!;
+      final prompt = match.group(2)!.trim();
+      if (prompt.isNotEmpty) {
+        existingPrompts[skillName] = prompt;
+      }
+    }
+
     // Generate the table
     final buffer = StringBuffer()
-      ..writeln('| Skill | Description |')
-      ..writeln('|---|---|');
+      ..writeln('| Skill | Description | Example prompt |')
+      ..writeln('|---|---|---|');
 
     // Sort skills by name for consistency
     final sortedSkills = List<SkillParams>.from(skills)
@@ -88,8 +99,10 @@ class UpdateReadmeCommand extends BaseYamlCommand {
       // Ensure we use forward slashes for the markdown link.
       relativeLink = relativeLink.replaceAll('\\', '/');
 
+      final prompt = existingPrompts[skill.name] ?? skill.examplePrompt ?? '';
+
       buffer.writeln(
-        '| [${skill.name}]($relativeLink) | ${skill.description} |',
+        '| [${skill.name}]($relativeLink) | ${skill.description} | $prompt |',
       );
     }
 

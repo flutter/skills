@@ -10,6 +10,7 @@ class SkillParams {
     required this.description,
     required this.resources,
     this.instructions,
+    this.examplePrompt,
   });
 
   /// Creates a [SkillParams] instance from a JSON map.
@@ -19,6 +20,7 @@ class SkillParams {
       description: json['description'] as String,
       resources: (json['resources'] as List).cast<String>(),
       instructions: json['instructions'] as String?,
+      examplePrompt: json['examplePrompt'] as String?,
     );
   }
 
@@ -27,6 +29,9 @@ class SkillParams {
 
   /// The description of the skill.
   final String description;
+
+  /// The example prompt for the skill.
+  final String? examplePrompt;
 
   /// Optional instructions for generating the skill.
   final String? instructions;
