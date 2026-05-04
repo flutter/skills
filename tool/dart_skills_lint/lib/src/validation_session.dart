@@ -112,8 +112,10 @@ class ValidationSession {
     final String? localIgnoreFile = _resolveIgnoreFile(normalizedSkillPath);
     final validator = Validator(ruleOverrides: localRules, customRules: customRules);
 
-    final ({SkillsIgnores ignores, String ignorePath}) loaded =
-        await _loadIgnores(localIgnoreFile, skillDir.parent);
+    final ({SkillsIgnores ignores, String ignorePath}) loaded = await _loadIgnores(
+      localIgnoreFile,
+      skillDir.parent,
+    );
     final SkillsIgnores ignores = loaded.ignores;
     final String skillName = p.basename(skillDir.path);
     final List<IgnoreEntry> skillIgnores = ignores.skills[skillName] ?? [];
@@ -184,8 +186,10 @@ class ValidationSession {
     }
     entities.sort((a, b) => a.path.compareTo(b.path));
 
-    final ({SkillsIgnores ignores, String ignorePath}) loaded =
-        await _loadIgnores(localIgnoreFile, rootDir);
+    final ({SkillsIgnores ignores, String ignorePath}) loaded = await _loadIgnores(
+      localIgnoreFile,
+      rootDir,
+    );
     final SkillsIgnores ignores = loaded.ignores;
 
     for (final entity in entities) {
@@ -258,7 +262,8 @@ class ValidationSession {
 
   Map<String, AnalysisSeverity> _resolveRulesForPath(String normalizedPath) {
     final localRules = Map<String, AnalysisSeverity>.from(resolvedRules);
-    for (final ({String normalizedPath, DirectoryConfig config}) entry in _normalizedDirectoryConfigs) {
+    for (final ({String normalizedPath, DirectoryConfig config}) entry
+        in _normalizedDirectoryConfigs) {
       if (normalizedPath.startsWith(entry.normalizedPath)) {
         localRules.addAll(entry.config.rules);
         break;
@@ -271,7 +276,8 @@ class ValidationSession {
     if (ignoreFileOverride != null) {
       return ignoreFileOverride;
     }
-    for (final ({String normalizedPath, DirectoryConfig config}) entry in _normalizedDirectoryConfigs) {
+    for (final ({String normalizedPath, DirectoryConfig config}) entry
+        in _normalizedDirectoryConfigs) {
       if (normalizedPath.startsWith(entry.normalizedPath)) {
         return entry.config.ignoreFile;
       }
@@ -330,10 +336,10 @@ class ValidationSession {
       }
       final String normalizedErrorFile = p.normalize(error.file);
       for (final pair in preNormalizedIgnores) {
-        if (pair.entry.ruleId == error.ruleId &&
-            pair.normalizedFileName == normalizedErrorFile) {
+        final IgnoreEntry ignore = pair.entry;
+        if (ignore.ruleId == error.ruleId && pair.normalizedFileName == normalizedErrorFile) {
           error.isIgnored = true;
-          pair.entry.used = true;
+          ignore.used = true;
           break;
         }
       }
@@ -484,11 +490,7 @@ class ValidationSession {
   /// Mutates [ignores] in place to add baseline entries for any non-ignored
   /// errors in [result] under the [skillName] key. Pure in-memory operation
   /// — pair with [_saveBaseline] to persist changes.
-  void _updateBaselineForSkill(
-    SkillsIgnores ignores,
-    ValidationResult result,
-    String skillName,
-  ) {
+  void _updateBaselineForSkill(SkillsIgnores ignores, ValidationResult result, String skillName) {
     final List<IgnoreEntry> currentSkillIgnores = ignores.skills[skillName] ?? [];
     final currentSkillSeen = <String>{};
     for (final ignore in currentSkillIgnores) {
