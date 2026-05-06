@@ -432,3 +432,27 @@
     - https://docs.flutter.dev/cookbook/networking/update-data
     - https://docs.flutter.dev/data-and-backend/serialization
     - https://docs.flutter.dev/data-and-backend/serialization/json
+
+- name: flutter-mobile-beta-release-handoff
+  description: Creates a reliable Flutter beta release handoff for Android
+    Firebase App Distribution and iOS TestFlight. Use when building, uploading,
+    or summarizing beta artifacts so release status, hashes, upload IDs, tester
+    distribution, and follow-up gaps are explicit.
+  examplePrompt: "Prepare a beta release handoff for my Flutter app after uploading Android to Firebase App Distribution and iOS to TestFlight"
+  instructions: |
+    1. Confirm the release intent before making version changes or uploading externally: app/repo, active branch, target environment, requested version/build number, approved release targets, and tester/group recipients.
+    2. Locate the actual Flutter package directory that contains `pubspec.yaml`; run all Flutter commands from that directory, even if the repository root is one level above it.
+    3. Record the starting branch and working tree state with `git branch --show-current` and `git status --short`; distinguish intentional release edits from generated dependency or build changes.
+    4. Validate build numbers before building: Android `versionCode` must fit store constraints and stay below Google Play limits, while iOS build numbers must be acceptable for App Store Connect and higher than previous uploads for the same marketing version.
+    5. Check platform configuration: Android package id/signing and iOS bundle id/signing team/provisioning/export method.
+    6. Prepare iOS dependencies when needed. If CocoaPods or encoding issues occur, run `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install --repo-update` from the iOS directory.
+    7. Build only approved artifacts: Android AAB for Play-linked/store flows, Android APK for Firebase App Distribution fallback or direct install, and iOS IPA for TestFlight.
+    8. For every artifact, record path, size, and SHA-256 hash using `shasum -a 256`.
+    9. Upload only after targets and recipients are clear. For Firebase App Distribution, record Firebase project id, app id, artifact type, release id/console URL, tester emails/groups, and whether no tester distribution occurred. For TestFlight, record Apple team/account context, bundle id, upload tool, Delivery UUID/upload id, and processing warnings.
+    10. If Firebase rejects an AAB because the Android app is not linked to Google Play, use an APK fallback only when acceptable for the release request and make the fallback explicit in the handoff.
+    11. End with a concise handoff containing done/not-done by platform, artifact paths/hashes, upload ids, dirty files, warnings/gaps, and the recommended next step.
+  resources:
+    - https://docs.flutter.dev/deployment/android
+    - https://docs.flutter.dev/deployment/ios
+    - https://firebase.google.com/docs/app-distribution
+    - https://developer.apple.com/help/app-store-connect/test-a-beta-version/upload-builds
